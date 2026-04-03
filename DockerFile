@@ -1,0 +1,21 @@
+# 1. Base image select karein
+FROM node:18-slim
+
+# 2. Working directory set karein
+WORKDIR /app
+
+# 3. Dependency files copy karein
+COPY package*.json ./
+
+# 4. Dependencies install karein
+RUN npm install --production
+
+# 5. Baaki saara application code copy karein
+# Ismein server.js aur public folder (index.html ke saath) shamil hai
+COPY . .
+
+# 6. Port expose karein (aapka server jis port par chalta hai)
+EXPOSE 3000
+
+# 7. App start karne ki command
+CMD ["node", "server.js"]
