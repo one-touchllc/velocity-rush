@@ -1,0 +1,2559 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Velocity Rush - 3D Racing Game</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Orbitron", "Rajdhani", "Exo 2", sans-serif;
+        overflow: hidden;
+        background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+        color: #fff;
+      }
+
+      /* ── PORTRAIT LOCK ── */
+      #rotateOverlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: #0a0e27;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1.5rem;
+      }
+      #rotateOverlay .rotate-icon {
+        font-size: 5rem;
+        animation: rotateAnim 2s ease-in-out infinite;
+      }
+      @keyframes rotateAnim {
+        0%,100% { transform: rotate(0deg); }
+        50% { transform: rotate(90deg); }
+      }
+      #rotateOverlay p {
+        font-size: 1.4rem;
+        color: #40e0d0;
+        text-align: center;
+        letter-spacing: 0.1em;
+      }
+      @media (orientation: portrait) {
+        #rotateOverlay { display: flex; }
+      }
+
+      #gameCanvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+      }
+      #ui-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 100;
+      }
+      #ui-overlay > * { pointer-events: auto; }
+
+      /* ── MAIN MENU ── */
+      #mainMenu {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, rgba(10,14,39,0.95), rgba(26,31,58,0.95));
+        backdrop-filter: blur(10px);
+        z-index: 1000;
+        gap: 0;
+      }
+      .game-title {
+        font-size: clamp(1.8rem, 6vw, 4.5rem);
+        font-weight: 900;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.3rem;
+        background: linear-gradient(135deg, #ff0080, #ff8c00, #40e0d0);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: titleGlow 3s ease-in-out infinite;
+      }
+      @keyframes titleGlow {
+        0%,100% { filter: brightness(1) drop-shadow(0 0 20px rgba(255,0,128,0.5)); }
+        50% { filter: brightness(1.3) drop-shadow(0 0 40px rgba(255,140,0,0.8)); }
+      }
+      .game-subtitle {
+        font-size: clamp(0.7rem, 2vw, 1rem);
+        letter-spacing: 0.3em;
+        margin-bottom: 0.5rem;
+        color: #40e0d0;
+        text-transform: uppercase;
+      }
+      #menuCarCanvas {
+        width: 160px;
+        height: 100px;
+        display: block;
+        margin: 0 auto 0.6rem;
+      }
+      .menu-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+        align-items: center;
+      }
+      .menu-btn {
+        padding: 0.9rem 2.2rem;
+        font-size: clamp(0.85rem, 2.5vw, 1.2rem);
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        border: 3px solid #ff0080;
+        background: linear-gradient(135deg, rgba(255,0,128,0.2), rgba(255,140,0,0.2));
+        color: #fff;
+        cursor: pointer;
+        text-transform: uppercase;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        min-width: 220px;
+        text-align: center;
+      }
+      .menu-btn::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        transition: left 0.5s;
+      }
+      .menu-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 30px rgba(255,0,128,0.5);
+        border-color: #ff8c00;
+      }
+      .menu-btn:hover::before { left: 100%; }
+      .menu-btn.online-btn {
+        border-color: #40e0d0;
+        background: linear-gradient(135deg, rgba(64,224,208,0.2), rgba(0,128,255,0.2));
+      }
+      .menu-btn.online-btn:hover {
+        box-shadow: 0 10px 30px rgba(64,224,208,0.5);
+        border-color: #00bfff;
+      }
+
+      /* ── TOP CORNER BUTTONS ── */
+      .top-corner-btn {
+        position: fixed;
+        top: 14px;
+        z-index: 1100;
+        background: rgba(255,0,128,0.18);
+        border: 2px solid #ff0080;
+        color: #fff;
+        cursor: pointer;
+        border-radius: 10px;
+        padding: 0.45rem 0.9rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+      .top-corner-btn:hover {
+        background: rgba(255,0,128,0.38);
+        transform: translateY(-2px);
+      }
+      #yourStatsBtn { right: 14px; }
+      #friendsBtn { right: 130px; }
+      .notif-badge {
+        background: #ff0000;
+        color: #fff;
+        border-radius: 50%;
+        width: 18px;
+        height: 18px;
+        font-size: 0.65rem;
+        font-weight: 900;
+        display: none;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* ── USERNAME EDIT ── */
+      #usernameRow {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0.4rem 0;
+      }
+      #usernameDisplay {
+        font-size: 1rem;
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      #usernameDisplay:hover {
+        text-decoration: underline;
+        color: #40e0d0;
+      }
+      #usernameInput {
+        display: none;
+        background: rgba(255,255,255,0.1);
+        border: 2px solid #40e0d0;
+        color: #fff;
+        padding: 0.3rem 0.6rem;
+        font-size: 1rem;
+        border-radius: 6px;
+        font-family: inherit;
+        width: 180px;
+      }
+      .edit-icon {
+        font-size: 0.9rem;
+        cursor: pointer;
+        color: #40e0d0;
+      }
+
+      /* ── CUSTOMIZE MENU ── */
+      #customizeMenu {
+        position: fixed;
+        inset: 0;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        background: linear-gradient(135deg, rgba(10,14,39,0.97), rgba(26,31,58,0.97));
+        backdrop-filter: blur(10px);
+        z-index: 1000;
+        overflow-y: auto;
+        padding: 20px 0 30px;
+      }
+      .customize-title {
+        font-size: clamp(1.4rem, 5vw, 2.5rem);
+        font-weight: 700;
+        margin-bottom: 0.4rem;
+        background: linear-gradient(135deg, #ff0080, #ff8c00);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        position: sticky;
+        top: 0;
+        z-index: 51;
+        padding-top: 16px;
+        background-color: #0d1128;
+      }
+      .coin-display {
+        font-size: 1.2rem;
+        color: #ffd700;
+        margin-bottom: 0.8rem;
+        font-weight: 600;
+        position: sticky;
+        top: 3rem;
+        z-index: 51;
+        background: #0d1128;
+        padding: 4px 0;
+      }
+      .customize-tabs {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.2rem;
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: #0d1128;
+        padding: 8px 0 6px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+        width: 100%;
+        gap: 0;
+      }
+      .tab-btn {
+        padding: 0.8rem 2.4rem;
+        font-size: 1rem;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        background: transparent;
+        color: #666;
+        cursor: pointer;
+        text-transform: uppercase;
+        border: none;
+        transition: all 0.3s;
+        position: relative;
+      }
+      .tab-btn::after {
+        content: "";
+        position: absolute;
+        bottom: -4px;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: transparent;
+        transition: background 0.3s;
+      }
+      .tab-btn.active { color: #fff; }
+      .tab-btn.active::after { background: #ff0080; }
+      .tab-divider {
+        width: 3px;
+        height: 36px;
+        background: linear-gradient(180deg, transparent, #ff0080, transparent);
+        border-radius: 2px;
+        flex-shrink: 0;
+      }
+      .tab-btn:hover:not(.active) { color: #ccc; }
+      .tab-panel {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+      }
+      .tab-panel.active { display: flex; }
+      .color-palette {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        max-width: 520px;
+        padding: 0 10px;
+      }
+      .color-swatch {
+        width: clamp(56px, 13vw, 90px);
+        height: clamp(56px, 13vw, 90px);
+        border-radius: 12px;
+        cursor: pointer;
+        border: 3px solid transparent;
+        transition: all 0.3s;
+        position: relative;
+        overflow: hidden;
+      }
+      .color-swatch:hover { transform: scale(1.1); }
+      .color-swatch.selected {
+        border-color: #fff;
+        box-shadow: 0 0 30px rgba(255,255,255,0.6);
+        transform: scale(1.15);
+      }
+      .color-swatch::after {
+        content: "✓";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 2rem;
+        color: #fff;
+        opacity: 0;
+        text-shadow: 0 0 10px rgba(0,0,0,0.8);
+      }
+      .color-swatch.selected::after { opacity: 1; }
+      .color-swatch.locked { opacity: 0.6; cursor: not-allowed; }
+      .color-swatch.locked::before {
+        content: "🔒";
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        font-size: 1.1rem;
+      }
+      .color-price {
+        position: absolute;
+        bottom: -22px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.7rem;
+        color: #ffd700;
+        white-space: nowrap;
+        font-weight: 600;
+      }
+      .swatch-golden { background: linear-gradient(135deg, #b8860b, #ffd700, #ffa500, #ffd700, #b8860b); box-shadow: 0 0 15px rgba(255,215,0,0.5); }
+      .swatch-toxic { background: linear-gradient(135deg, #00ff00, #39ff14, #7fff00, #00cc00); box-shadow: 0 0 15px rgba(57,255,20,0.5); }
+      .swatch-rainbow { background: linear-gradient(135deg, #ff0000, #ff7700, #ffff00, #00ff00, #0000ff, #8b00ff); }
+      .swatch-musical { background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460, #533483); box-shadow: 0 0 15px rgba(83,52,131,0.5); }
+      .swatch-skull { background: linear-gradient(135deg, #1a0a0a, #2d0d0d, #1a0a0a); box-shadow: 0 0 15px rgba(200,0,0,0.3); }
+
+      .wheel-palette {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 14px 8px;
+        margin-bottom: 1rem;
+        max-width: 560px;
+        padding: 0 10px;
+        width: 100%;
+      }
+      @media (max-width: 560px) {
+        .wheel-palette { grid-template-columns: repeat(4, 1fr); max-width: 380px; }
+        .color-palette { grid-template-columns: repeat(4, 1fr); }
+      }
+      .wheel-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+      .wheel-swatch {
+        width: clamp(50px, 9vw, 80px);
+        height: clamp(50px, 9vw, 80px);
+        border-radius: 50%;
+        cursor: pointer;
+        border: 3px solid rgba(255,255,255,0.15);
+        transition: all 0.3s;
+        position: relative;
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+      .wheel-swatch:hover { transform: scale(1.1) rotate(12deg); border-color: rgba(255,255,255,0.5); }
+      .wheel-swatch.selected {
+        border-color: #fff;
+        box-shadow: 0 0 18px rgba(255,255,255,0.8), 0 0 35px rgba(255,0,128,0.4);
+        transform: scale(1.12);
+      }
+      .wheel-swatch.locked { opacity: 0.5; cursor: not-allowed; }
+      .wheel-lock { position: absolute; top: 3px; right: 3px; font-size: 0.8rem; z-index: 10; }
+      .wheel-name { font-size: clamp(0.45rem, 1.2vw, 0.6rem); color: #ccc; font-weight: 600; text-align: center; line-height: 1.2; max-width: 100%; word-break: break-word; }
+      .wheel-price { font-size: clamp(0.42rem, 1.1vw, 0.56rem); color: #ffd700; font-weight: 700; text-align: center; }
+
+      /* ── GAME UI ── */
+      #gameUI { display: none; }
+      #scoreDisplay {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        font-size: clamp(1.2rem, 4vw, 2rem);
+        font-weight: 700;
+        color: #fff;
+        text-shadow: 0 0 10px rgba(0,0,0,0.8), 0 0 20px rgba(255,140,0,0.6);
+        z-index: 200;
+      }
+      #settingsBtn {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        width: 46px;
+        height: 46px;
+        background: rgba(255,0,128,0.3);
+        border: 2px solid #ff0080;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        color: #fff;
+        transition: all 0.3s;
+        z-index: 200;
+      }
+      #settingsBtn:hover { background: rgba(255,0,128,0.5); transform: rotate(90deg); }
+      #finishDistance {
+        position: fixed;
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(10,14,39,0.85);
+        border: 2px solid #40e0d0;
+        border-radius: 12px;
+        padding: 0.4rem 1.2rem;
+        z-index: 220;
+        font-size: 0.95rem;
+        color: #40e0d0;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        display: none;
+        white-space: nowrap;
+      }
+      #onlineBar {
+        position: fixed;
+        bottom: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(10,14,39,0.7);
+        border: 1px solid rgba(64,224,208,0.3);
+        border-radius: 20px;
+        padding: 0.25rem 0.9rem;
+        font-size: 0.72rem;
+        color: #40e0d0;
+        z-index: 220;
+        letter-spacing: 0.05em;
+      }
+
+      /* ── IN-GAME LEADERBOARD ── */
+      #inGameLeaderboard {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        z-index: 210;
+        background: rgba(10,14,39,0.88);
+        border: 2px solid rgba(255,0,128,0.5);
+        border-radius: 12px;
+        padding: 0.5rem 0.8rem;
+        min-width: 170px;
+        display: none;
+      }
+      #inGameLeaderboard h4 { color: #ff8c00; font-size: 0.75rem; margin-bottom: 0.4rem; letter-spacing: 0.1em; }
+      .lb-entry { display: flex; align-items: center; gap: 0.4rem; margin: 0.2rem 0; font-size: 0.7rem; }
+      .lb-rank { color: #ffd700; font-weight: 900; width: 16px; }
+      .lb-name { flex: 1; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .lb-score { color: #40e0d0; font-weight: 700; }
+
+      /* ── SETTINGS ── */
+      #settingsMenu {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.2rem;
+        background: linear-gradient(135deg, rgba(10,14,39,0.98), rgba(26,31,58,0.98));
+        padding: 2.5rem;
+        border-radius: 20px;
+        border: 3px solid #ff0080;
+        box-shadow: 0 0 50px rgba(255,0,128,0.5);
+        z-index: 300;
+        min-width: 280px;
+      }
+      .settings-title { font-size: 1.8rem; font-weight: 700; color: #ff8c00; }
+      .volume-control { width: 100%; display: flex; flex-direction: column; gap: 0.4rem; }
+      .volume-label { font-size: 0.9rem; color: #40e0d0; }
+      #volumeSlider {
+        width: 100%;
+        height: 8px;
+        border-radius: 5px;
+        background: rgba(255,255,255,0.2);
+        outline: none;
+        -webkit-appearance: none;
+      }
+      #volumeSlider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #ff0080;
+        cursor: pointer;
+      }
+      .settings-btn {
+        padding: 0.7rem 1.8rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border: 2px solid #ff0080;
+        background: rgba(255,0,128,0.2);
+        color: #fff;
+        cursor: pointer;
+        text-transform: uppercase;
+        transition: all 0.3s;
+        width: 100%;
+      }
+      .settings-btn:hover { background: rgba(255,0,128,0.4); }
+
+      /* ── MOBILE CONTROLS ── */
+      #mobileControls {
+        position: fixed;
+        bottom: 28px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: none;
+        gap: 2rem;
+        z-index: 200;
+      }
+      .control-btn {
+        width: 65px;
+        height: 65px;
+        background: rgba(255,0,128,0.3);
+        border: 3px solid #ff0080;
+        border-radius: 50%;
+        color: #fff;
+        font-size: 1.8rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .control-btn:active { background: rgba(255,0,128,0.6); transform: scale(0.95); }
+      @media (max-width: 768px) { #mobileControls { display: flex; } }
+
+      /* ── GAME OVER ── */
+      #gameOverScreen {
+        position: fixed;
+        inset: 0;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, rgba(10,14,39,0.95), rgba(26,31,58,0.95));
+        backdrop-filter: blur(10px);
+        z-index: 1000;
+      }
+      .game-over-title {
+        font-size: clamp(2.5rem, 8vw, 5rem);
+        font-weight: 900;
+        margin-bottom: 1.5rem;
+        color: #ff0080;
+        text-shadow: 0 0 40px rgba(255,0,128,0.8);
+        animation: gameOverPulse 1s ease-in-out infinite;
+      }
+      @keyframes gameOverPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+      .final-score { font-size: clamp(1.4rem, 4vw, 2.2rem); margin-bottom: 0.5rem; color: #40e0d0; }
+      #postRaceLB {
+        background: rgba(10,14,39,0.9);
+        border: 2px solid #ff0080;
+        border-radius: 16px;
+        padding: 1rem 1.5rem;
+        margin: 1rem 0;
+        min-width: 320px;
+        max-width: 480px;
+        width: 90vw;
+        max-height: 45vh;
+        overflow-y: auto;
+      }
+      #postRaceLB h3 { color: #ff8c00; font-size: 1.1rem; margin-bottom: 0.8rem; text-align: center; letter-spacing: 0.15em; }
+      .postlb-row {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.5rem 0.6rem;
+        border-radius: 8px;
+        margin: 0.3rem 0;
+        background: rgba(255,255,255,0.05);
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .postlb-row:hover { background: rgba(255,0,128,0.15); }
+      .postlb-rank { font-size: 1.3rem; width: 28px; text-align: center; }
+      .postlb-name { flex: 1; font-weight: 700; font-size: 0.95rem; }
+      .postlb-score { color: #ffd700; font-weight: 700; font-size: 0.9rem; }
+      .postlb-medal { font-size: 1.1rem; }
+
+      /* ── USER STATS MODAL ── */
+      #statsModal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 3000;
+        background: rgba(0,0,0,0.7);
+        backdrop-filter: blur(8px);
+      }
+      #friendsModal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(6px);
+      }
+      .modal-box {
+        background: linear-gradient(135deg, #0d1128, #1a1f3a);
+        border: 2px solid #ff0080;
+        border-radius: 20px;
+        padding: 1.5rem;
+        min-width: 320px;
+        max-width: 520px;
+        width: 92vw;
+        box-shadow: 0 0 60px rgba(255,0,128,0.4);
+        position: relative;
+        max-height: 85vh;
+        overflow-y: auto;
+      }
+      .modal-close {
+        position: absolute;
+        top: 0.8rem;
+        right: 0.9rem;
+        background: none;
+        border: none;
+        color: #ff0080;
+        font-size: 1.6rem;
+        cursor: pointer;
+      }
+      .modal-title { font-size: 1.3rem; font-weight: 900; color: #ff8c00; margin-bottom: 1rem; letter-spacing: 0.1em; }
+
+      .stats-layout { display: flex; gap: 1.2rem; align-items: flex-start; flex-wrap: wrap; }
+      .stats-car-preview { flex-shrink: 0; }
+      .stats-car-preview canvas { border-radius: 12px; background: rgba(255,255,255,0.04); display: block; }
+      .stats-table { flex: 1; min-width: 180px; }
+      .stat-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.38rem 0;
+        border-bottom: 1px solid rgba(255,255,255,0.07);
+        font-size: 0.88rem;
+      }
+      .stat-row .s-label { color: #40e0d0; }
+      .stat-row .s-val { color: #fff; font-weight: 700; }
+
+      .uid-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.7rem;
+        background: rgba(255,255,255,0.04);
+        border-radius: 8px;
+        padding: 0.4rem 0.6rem;
+      }
+      .uid-text {
+        font-size: 0.62rem;
+        color: #888;
+        letter-spacing: 0.06em;
+        word-break: break-all;
+        flex: 1;
+      }
+      .uid-copy-btn {
+        background: rgba(64,224,208,0.2);
+        border: 1px solid #40e0d0;
+        color: #40e0d0;
+        border-radius: 6px;
+        padding: 0.2rem 0.5rem;
+        font-size: 0.65rem;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.2s;
+        flex-shrink: 0;
+      }
+      .uid-copy-btn:hover { background: rgba(64,224,208,0.4); }
+      .uid-copy-btn.copied { color: #00ff88; border-color: #00ff88; background: rgba(0,255,136,0.15); }
+
+      .add-friend-btn {
+        display: block;
+        width: 100%;
+        margin-top: 1rem;
+        padding: 0.65rem;
+        font-size: 0.95rem;
+        font-weight: 700;
+        border: 2px solid #40e0d0;
+        background: rgba(64,224,208,0.15);
+        color: #fff;
+        cursor: pointer;
+        border-radius: 10px;
+        letter-spacing: 0.08em;
+        transition: all 0.3s;
+        text-transform: uppercase;
+      }
+      .add-friend-btn:hover { background: rgba(64,224,208,0.35); box-shadow: 0 0 20px rgba(64,224,208,0.4); }
+      .add-friend-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+      .friend-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+      .friend-tab-btn {
+        flex: 1;
+        padding: 0.5rem;
+        font-size: 0.82rem;
+        font-weight: 700;
+        border: 2px solid rgba(255,0,128,0.4);
+        background: transparent;
+        color: #888;
+        cursor: pointer;
+        border-radius: 8px;
+        transition: all 0.3s;
+        letter-spacing: 0.05em;
+      }
+      .friend-tab-btn.active { border-color: #ff0080; color: #fff; background: rgba(255,0,128,0.2); }
+
+      .uid-search-box {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(64,224,208,0.3);
+        border-radius: 10px;
+        padding: 0.6rem;
+      }
+      .uid-search-input {
+        flex: 1;
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(64,224,208,0.4);
+        color: #fff;
+        padding: 0.4rem 0.7rem;
+        font-size: 0.8rem;
+        border-radius: 6px;
+        font-family: inherit;
+        letter-spacing: 0.05em;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+      .uid-search-input::placeholder { color: #666; }
+      .uid-search-input:focus { border-color: #40e0d0; }
+      .uid-search-btn {
+        background: rgba(64,224,208,0.25);
+        border: 1px solid #40e0d0;
+        color: #fff;
+        padding: 0.4rem 0.8rem;
+        border-radius: 6px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.2s;
+        letter-spacing: 0.05em;
+      }
+      .uid-search-btn:hover { background: rgba(64,224,208,0.45); }
+      .uid-search-result {
+        margin-top: 0.4rem;
+        font-size: 0.75rem;
+        padding: 0.3rem 0;
+      }
+      .uid-search-result.success { color: #00ff88; }
+      .uid-search-result.error { color: #ff4444; }
+
+      .friend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.5rem 0.6rem;
+        border-radius: 8px;
+        background: rgba(255,255,255,0.05);
+        margin: 0.3rem 0;
+      }
+      .friend-item-name { flex: 1; font-weight: 700; font-size: 0.9rem; }
+      .friend-item-coins { font-size: 0.78rem; color: #ffd700; }
+      .friend-action-btn {
+        padding: 0.3rem 0.7rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        letter-spacing: 0.05em;
+      }
+      .btn-accept { background: #00cc66; color: #fff; }
+      .btn-reject { background: #cc0033; color: #fff; margin-left: 0.3rem; }
+      .btn-view { background: rgba(64,224,208,0.3); border: 1px solid #40e0d0; color: #fff; }
+      .empty-msg { color: #666; text-align: center; padding: 1rem; font-size: 0.85rem; }
+
+      /* ── WAITING ROOM ── */
+      #waitingRoom {
+        position: fixed;
+        inset: 0;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, rgba(10,14,39,0.97), rgba(26,31,58,0.97));
+        backdrop-filter: blur(10px);
+        z-index: 1500;
+      }
+      .waiting-title { font-size: 2rem; font-weight: 900; color: #40e0d0; margin-bottom: 1rem; }
+      .waiting-players { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin: 1rem 0; }
+      .waiting-player {
+        background: rgba(255,255,255,0.07);
+        border: 2px solid rgba(64,224,208,0.4);
+        border-radius: 12px;
+        padding: 0.7rem 1.2rem;
+        text-align: center;
+        min-width: 100px;
+      }
+      .waiting-player .wp-name { font-size: 0.9rem; font-weight: 700; }
+      .waiting-player .wp-color { font-size: 0.7rem; color: #40e0d0; margin-top: 0.2rem; }
+      #countdown { font-size: 4rem; font-weight: 900; color: #ff0080; margin: 1rem 0; text-shadow: 0 0 30px rgba(255,0,128,0.8); }
+      #cancelQueueBtn {
+        margin-top: 0.8rem;
+        padding: 0.6rem 1.8rem;
+        border: 2px solid #ff0080;
+        background: rgba(255,0,128,0.2);
+        color: #fff;
+        cursor: pointer;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 700;
+        transition: all 0.3s;
+      }
+      #cancelQueueBtn:hover { background: rgba(255,0,128,0.4); }
+
+      /* ── LOADING ── */
+      #loadingScreen {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #0a0e27, #1a1f3a);
+        z-index: 9000;
+        transition: opacity 0.6s ease;
+      }
+      #loadingScreen.fade-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .loading-text { font-size: 1.8rem; color: #40e0d0; margin-top: 1.5rem; letter-spacing: 0.1em; }
+      .loading-sub { font-size: 0.85rem; color: #666; margin-top: 0.5rem; letter-spacing: 0.05em; }
+      .loading-spinner {
+        width: 56px;
+        height: 56px;
+        border: 5px solid rgba(64,224,208,0.3);
+        border-top-color: #40e0d0;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .indus-badge { margin-top: 1.5rem; }
+      .indus-badge img { width: 240px; height: 70px; }
+
+      ::-webkit-scrollbar { width: 4px; }
+      ::-webkit-scrollbar-track { background: rgba(255,255,255,0.04); }
+      ::-webkit-scrollbar-thumb { background: #ff0080; border-radius: 2px; }
+    </style>
+  </head>
+  <body>
+    <!-- Loading Screen — shown first, hidden after boot -->
+    <div id="loadingScreen">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">VELOCITY RUSH</div>
+      <div class="loading-sub">Loading assets...</div>
+      <a href="https://indusapp.store/22mh1nqt" class="indus-badge">
+        <img alt="Get it on Indus Appstore" src="https://docstore.indusappstore.com/public/external/developerdashboard-static/badge-black-background-english.png" />
+      </a>
+    </div>
+
+    <div id="rotateOverlay">
+      <div class="rotate-icon">📱</div>
+      <p>Please rotate your device<br />to landscape mode</p>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="ui-overlay">
+      <!-- MAIN MENU -->
+      <div id="mainMenu">
+        <button class="top-corner-btn" id="yourStatsBtn" style="display:none">📊 Your Stats</button>
+        <button class="top-corner-btn" id="friendsBtn" style="display:none">
+          👥 Friends <span class="notif-badge" id="friendNotifBadge">0</span>
+        </button>
+        <h1 class="game-title">VELOCITY RUSH</h1>
+        <p class="game-subtitle">3D Racing Experience</p>
+        <canvas id="menuCarCanvas" width="280" height="140"></canvas>
+        <div id="usernameRow">
+          <span id="usernameDisplay">Loading...</span>
+          <span class="edit-icon" id="editNameBtn" title="Edit name">✏️</span>
+          <input type="text" id="usernameInput" maxlength="16" placeholder="Enter name..." />
+          <button id="saveNameBtn" style="display:none;padding:0.3rem 0.7rem;background:rgba(64,224,208,0.3);border:1px solid #40e0d0;color:#fff;cursor:pointer;border-radius:6px;font-size:0.8rem;">Save</button>
+        </div>
+        <div class="menu-buttons" style="margin-top:0.6rem">
+          <button class="menu-btn" id="playBtn">▶ PLAY OFFLINE</button>
+          <button class="menu-btn online-btn" id="playOnlineBtn">🌐 PLAY ONLINE</button>
+          <button class="menu-btn" id="customizeBtn">🎨 CUSTOMIZE CAR</button>
+        </div>
+        <div id="onlineBar" style="position:relative;transform:none;margin-top:0.8rem;left:auto;bottom:auto;">
+          🟢 <span id="onlineCountMenu">0</span> online
+        </div>
+      </div>
+
+      <!-- WAITING ROOM -->
+      <div id="waitingRoom">
+        <h2 class="waiting-title">🏁 WAITING FOR PLAYERS...</h2>
+        <div class="waiting-players" id="waitingPlayers"></div>
+        <div id="countdown"></div>
+        <p style="color:#888;font-size:0.85rem;margin-bottom:0.5rem">Race starts when 2+ players join or timer runs out</p>
+        <button id="cancelQueueBtn">CANCEL</button>
+      </div>
+
+      <!-- CUSTOMIZE MENU -->
+      <div id="customizeMenu">
+        <h2 class="customize-title">CUSTOMIZE YOUR CAR</h2>
+        <div class="coin-display">💰 Coins: <span id="coinBalance">0</span></div>
+        <div class="customize-tabs">
+          <button class="tab-btn active" id="tabColorBtn" onclick="switchTab('color')">🎨 Colors</button>
+          <div class="tab-divider"></div>
+          <button class="tab-btn" id="tabWheelBtn" onclick="switchTab('wheel')">🔧 Wheels</button>
+        </div>
+        <div class="tab-panel active" id="tabColorPanel">
+          <p style="color:#40e0d0;font-size:0.85rem;margin-bottom:0.8rem;letter-spacing:0.1em;">SELECT CAR COLOR</p>
+          <div class="color-palette" id="colorPalette"></div>
+        </div>
+        <div class="tab-panel" id="tabWheelPanel">
+          <p style="color:#40e0d0;font-size:0.85rem;margin-bottom:0.8rem;letter-spacing:0.1em;">SELECT WHEEL STYLE</p>
+          <div class="wheel-palette" id="wheelPalette"></div>
+        </div>
+        <div class="menu-buttons" style="margin-top:2.5rem">
+          <button class="menu-btn" id="savePlayBtn">SAVE &amp; PLAY</button>
+          <button class="menu-btn" id="backBtn">BACK</button>
+        </div>
+      </div>
+
+      <!-- GAME UI -->
+      <div id="gameUI">
+        <div id="scoreDisplay">Score: 0</div>
+        <div id="finishDistance">🏁 Finish: 1000m</div>
+        <button id="settingsBtn">⚙️</button>
+        <div id="inGameLeaderboard">
+          <h4>🏆 LEADERBOARD</h4>
+          <div id="lbEntries"></div>
+        </div>
+        <div id="mobileControls">
+          <button class="control-btn" id="leftBtn">◄</button>
+          <button class="control-btn" id="rightBtn">►</button>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div id="settingsMenu">
+        <h3 class="settings-title">SETTINGS</h3>
+        <div class="volume-control">
+          <label class="volume-label">🔊 Volume</label>
+          <input type="range" id="volumeSlider" min="0" max="100" value="50" />
+        </div>
+        <button class="settings-btn" id="resumeBtn">RESUME</button>
+        <button class="settings-btn" id="menuFromSettingsBtn">MAIN MENU</button>
+      </div>
+
+      <!-- GAME OVER -->
+      <div id="gameOverScreen">
+        <h2 class="game-over-title">GAME OVER</h2>
+        <p class="final-score">Final Score: <span id="finalScore">0</span></p>
+        <div id="postRaceLB">
+          <h3>🏆 RACE RESULTS</h3>
+          <div id="postRaceLBEntries"></div>
+        </div>
+        <div class="menu-buttons" style="margin-top:0.8rem">
+          <button class="menu-btn" id="playAgainBtn">PLAY AGAIN</button>
+          <button class="menu-btn" id="mainMenuBtn">MAIN MENU</button>
+        </div>
+      </div>
+
+      <!-- USER STATS MODAL -->
+      <div id="statsModal">
+        <div class="modal-box">
+          <button class="modal-close" id="closeStatsModal">✕</button>
+          <div class="modal-title" id="statsModalTitle">PLAYER STATS</div>
+          <div class="stats-layout">
+            <div class="stats-car-preview">
+              <canvas id="statsCarCanvas" width="160" height="200"></canvas>
+            </div>
+            <div class="stats-table" id="statsTableContent"></div>
+          </div>
+          <button class="add-friend-btn" id="addFriendBtn" style="display:none">👥 Add Friend</button>
+        </div>
+      </div>
+
+      <!-- FRIENDS MODAL -->
+      <div id="friendsModal">
+        <div class="modal-box">
+          <button class="modal-close" id="closeFriendsModal">✕</button>
+          <div class="modal-title">👥 FRIENDS</div>
+          <div class="uid-search-box">
+            <div style="flex:1">
+              <input
+                type="text"
+                class="uid-search-input"
+                id="uidSearchInput"
+                maxlength="10"
+                placeholder="Enter UID to send friend request..."
+                style="width:100%"
+              />
+              <div class="uid-search-result" id="uidSearchResult"></div>
+            </div>
+            <button class="uid-search-btn" id="uidSearchBtn">Send Request</button>
+          </div>
+          <div class="friend-tabs">
+            <button class="friend-tab-btn active" id="ftFriends" onclick="showFriendTab('friends')">Friends</button>
+            <button class="friend-tab-btn" id="ftRequests" onclick="showFriendTab('requests')">
+              Requests <span id="reqCount" style="color:#ff4444"></span>
+            </button>
+          </div>
+          <div id="friendsListPanel"></div>
+          <div id="requestsListPanel" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fixed online bar -->
+    <div id="onlineBar" style="display:none">
+      🟢 <span id="onlineCountBar">0</span> players online
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      // ══════════════════════════════════════════════════════
+      //  LOADING SCREEN HELPER — call hideLoading() when ready
+      // ══════════════════════════════════════════════════════
+      function hideLoading() {
+        const ls = document.getElementById("loadingScreen");
+        if (!ls) return;
+        ls.classList.add("fade-out");
+        setTimeout(() => { ls.style.display = "none"; }, 650);
+      }
+
+      // ══════════════════════════════════════════════════════
+      //  AUDIO
+      // ══════════════════════════════════════════════════════
+      let audioContext = null, musicNodes = null, musicStarted = false;
+      function createProceduralMusic() {
+        if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const bass = audioContext.createOscillator(), bassGain = audioContext.createGain();
+        bass.type = "sine"; bass.frequency.value = 65; bassGain.gain.value = 0.3;
+        bass.connect(bassGain);
+        const lead = audioContext.createOscillator(), leadGain = audioContext.createGain();
+        lead.type = "sawtooth"; lead.frequency.value = 523.25; leadGain.gain.value = 0.15;
+        lead.connect(leadGain);
+        const pad = audioContext.createOscillator(), padGain = audioContext.createGain();
+        pad.type = "triangle"; pad.frequency.value = 261.63; padGain.gain.value = 0.1;
+        pad.connect(padGain);
+        const arp = audioContext.createOscillator(), arpGain = audioContext.createGain();
+        arp.type = "square"; arp.frequency.value = 1046.5; arpGain.gain.value = 0.08;
+        arp.connect(arpGain);
+        const masterGain = audioContext.createGain();
+        masterGain.gain.value = gameState.volume;
+        bassGain.connect(masterGain); leadGain.connect(masterGain);
+        padGain.connect(masterGain); arpGain.connect(masterGain);
+        masterGain.connect(audioContext.destination);
+        bass.start(); lead.start(); pad.start(); arp.start();
+        const chords = [[65,261.63,523.25],[110,440,880],[87.31,349.23,698.46],[98,392,784]];
+        let ci = 0;
+        const ci1 = setInterval(() => {
+          if (!musicStarted) { clearInterval(ci1); return; }
+          const c = chords[ci++ % chords.length];
+          bass.frequency.setValueAtTime(c[0], audioContext.currentTime);
+          pad.frequency.setValueAtTime(c[1], audioContext.currentTime);
+          lead.frequency.setValueAtTime(c[2], audioContext.currentTime);
+        }, 2000);
+        const arpN = [1046.5, 1318.5, 1568, 2093];
+        let ai = 0;
+        const ci2 = setInterval(() => {
+          if (!musicStarted) { clearInterval(ci2); return; }
+          arp.frequency.setValueAtTime(arpN[ai++ % arpN.length], audioContext.currentTime);
+        }, 250);
+        return { context: audioContext, masterGain, intervals: [ci1, ci2], oscillators: [bass, lead, pad, arp] };
+      }
+      function startBackgroundMusic() {
+        if (!musicStarted) {
+          musicStarted = true;
+          try {
+            musicNodes = createProceduralMusic();
+            if (audioContext.state === "suspended") audioContext.resume();
+          } catch (e) {}
+        } else if (audioContext && audioContext.state === "suspended") audioContext.resume();
+      }
+
+      // ══════════════════════════════════════════════════════
+      //  UID + STORAGE
+      // ══════════════════════════════════════════════════════
+      function getOrCreateUID() {
+        let uid = localStorage.getItem("vrUID");
+        if (!uid) {
+          const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+          uid = "";
+          for (let i = 0; i < 10; i++) uid += chars[Math.floor(Math.random() * chars.length)];
+          localStorage.setItem("vrUID", uid);
+        }
+        return uid;
+      }
+      const MY_UID = getOrCreateUID();
+
+      function ls(k, def) {
+        try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch { return def; }
+      }
+      function lss(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+
+      // ══════════════════════════════════════════════════════
+      //  GAME STATE
+      // ══════════════════════════════════════════════════════
+      const gameState = {
+        scene: "menu",
+        score: 0,
+        totalCoins: ls("vrCoins", 0),
+        gameSpeed: 0.3,
+        playerCarColor: ls("vrColor", '"red"') || "red",
+        selectedWheel: ls("vrWheel", '"blackgrooves"') || "blackgrooves",
+        volume: 0.5,
+        isPaused: false,
+        playerCar: null,
+        enemyCars: [],
+        coins: [],
+        keys: {},
+        ownedColors: ls("vrOwnedColors", null) || ["red","blue","green","yellow"],
+        ownedWheels: ls("vrOwnedWheels", null) || ["blackgrooves"],
+        isOnline: false,
+        myRoomId: null,
+        otherPlayers: {},
+        finishDistance: 1000,
+        totalDistance: 1000,
+        userName: ls("vrName", null) || "Racer_" + MY_UID.slice(0, 4),
+      };
+      if (typeof gameState.playerCarColor === "string" && gameState.playerCarColor.startsWith('"'))
+        gameState.playerCarColor = JSON.parse(gameState.playerCarColor);
+      if (typeof gameState.selectedWheel === "string" && gameState.selectedWheel.startsWith('"'))
+        gameState.selectedWheel = JSON.parse(gameState.selectedWheel);
+
+      function saveLocal() {
+        lss("vrCoins", gameState.totalCoins);
+        lss("vrColor", gameState.playerCarColor);
+        lss("vrWheel", gameState.selectedWheel);
+        lss("vrOwnedColors", gameState.ownedColors);
+        lss("vrOwnedWheels", gameState.ownedWheels);
+        lss("vrName", gameState.userName);
+      }
+
+      // ══════════════════════════════════════════════════════
+      //  COLOR / WHEEL DATA
+      // ══════════════════════════════════════════════════════
+      const colorMap = {
+        red: 0xff0000, blue: 0x0066ff, green: 0x00ff00, yellow: 0xffff00,
+        purple: 0x9900ff, orange: 0xff8800, white: 0xffffff, black: 0x000000,
+        golden: "GOLDEN", toxictyranny: "TOXIC", rainbow: "RAINBOW",
+        musicalscore: "MUSICAL", skullnbones: "SKULL",
+      };
+      const colorPrices = {
+        red:0, blue:0, green:0, yellow:0, purple:300, orange:500,
+        white:200, black:1000, golden:800, toxictyranny:600,
+        rainbow:750, musicalscore:550, skullnbones:900,
+      };
+      const colorDisplayNames = {
+        red:"Red", blue:"Blue", green:"Green", yellow:"Yellow", purple:"Purple",
+        orange:"Orange", white:"White", black:"Black", golden:"Golden",
+        toxictyranny:"Toxic Tyranny", rainbow:"Rainbow",
+        musicalscore:"Musical Score", skullnbones:"Skull N Bones",
+      };
+      const wheelData = {
+        blackgrooves: { name:"Black Grooves", price:0, color:0x111111, rimColor:0x222222, style:"grooves" },
+        skellywhite: { name:"Skelly White", price:250, color:0xf0f0f0, rimColor:0xcccccc, style:"skelly" },
+        goldengrooves: { name:"Golden Grooves", price:400, color:0xffd700, rimColor:0xb8860b, style:"goldengrooves" },
+        rainbowwheels: { name:"Rainbow Wheels", price:500, color:0xff0000, rimColor:0x0000ff, style:"rainbow" },
+        toxicthreads: { name:"Toxic Threads", price:350, color:0x39ff14, rimColor:0x006600, style:"toxic" },
+        blackandwhite: { name:"Black & White", price:300, color:0x111111, rimColor:0xffffff, style:"bw" },
+        musicalwheels: { name:"Musical Wheels", price:450, color:0x1a0050, rimColor:0x9900ff, style:"musical" },
+        blueslicks: { name:"Blue Slicks", price:200, color:0x0044ff, rimColor:0x0088ff, style:"slick" },
+        redslicks: { name:"Red Slicks", price:200, color:0xff0000, rimColor:0xff6600, style:"slick" },
+        pirateslicks: { name:"Pirate Slicks", price:600, color:0x1a0000, rimColor:0xcc0000, style:"pirate" },
+      };
+
+      // ══════════════════════════════════════════════════════
+      //  THREE.JS INIT
+      // ══════════════════════════════════════════════════════
+      let scene, camera, renderer, clock;
+      let playerCarMesh, enemyCarMeshes = [], coinMeshes = [];
+      let roadMesh, groundMesh, laneMarkerGroup;
+
+      const ROAD_WIDTH_OFFLINE = 20;
+      const ROAD_WIDTH_ONLINE = 30;
+
+      function initThree() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+        scene.fog = new THREE.Fog(0x87ceeb, 50, 200);
+        camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
+        camera.position.set(0, 8, 15);
+        camera.lookAt(0, 0, 0);
+        renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("gameCanvas"), antialias: true });
+        renderer.setSize(innerWidth, innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        clock = new THREE.Clock();
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+        dir.position.set(10, 20, 10);
+        dir.castShadow = true;
+        dir.shadow.camera.left = -50;
+        dir.shadow.camera.right = 50;
+        dir.shadow.camera.top = 50;
+        dir.shadow.camera.bottom = -50;
+        scene.add(dir);
+        createEnvironment(false);
+        window.addEventListener("resize", onResize);
+      }
+
+      let kerb_left, kerb_right;
+
+      function createEnvironment(online) {
+        const roadW = online ? ROAD_WIDTH_ONLINE : ROAD_WIDTH_OFFLINE;
+        const halfW = roadW / 2;
+
+        if (groundMesh) scene.remove(groundMesh);
+        if (roadMesh) scene.remove(roadMesh);
+        if (laneMarkerGroup) scene.remove(laneMarkerGroup);
+        if (kerb_left) scene.remove(kerb_left);
+        if (kerb_right) scene.remove(kerb_right);
+
+        groundMesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(200, 300),
+          new THREE.MeshLambertMaterial({ color: 0x228b22 })
+        );
+        groundMesh.rotation.x = -Math.PI / 2;
+        groundMesh.position.y = -0.1;
+        groundMesh.receiveShadow = true;
+        scene.add(groundMesh);
+
+        roadMesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(roadW, 300),
+          new THREE.MeshLambertMaterial({ color: 0x444444 })
+        );
+        roadMesh.rotation.x = -Math.PI / 2;
+        roadMesh.receiveShadow = true;
+        scene.add(roadMesh);
+
+        laneMarkerGroup = new THREE.Group();
+        for (let i = 0; i < 30; i++) {
+          const m = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.5, 3),
+            new THREE.MeshBasicMaterial({ color: 0xffffff })
+          );
+          m.rotation.x = -Math.PI / 2;
+          m.position.set(0, 0.01, -i * 10);
+          laneMarkerGroup.add(m);
+        }
+        scene.add(laneMarkerGroup);
+
+        const km = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+        const kg = new THREE.BoxGeometry(2, 0.3, 300);
+        kerb_left = new THREE.Mesh(kg, km);
+        kerb_left.position.set(-(halfW + 1), 0, 0);
+        scene.add(kerb_left);
+        kerb_right = new THREE.Mesh(kg, km);
+        kerb_right.position.set(halfW + 1, 0, 0);
+        scene.add(kerb_right);
+
+        for (let i = 0; i < 60; i++) {
+          if (i % 2 === 0) {
+            const sg = new THREE.BoxGeometry(2, 0.31, 2.5),
+              sm = new THREE.MeshLambertMaterial({ color: 0xffffff });
+            const ls_mesh = new THREE.Mesh(sg, sm);
+            ls_mesh.position.set(-(halfW + 1), 0, -i * 5);
+            scene.add(ls_mesh);
+            const rs_mesh = new THREE.Mesh(sg, sm);
+            rs_mesh.position.set(halfW + 1, 0, -i * 5);
+            scene.add(rs_mesh);
+          }
+        }
+        createTrees();
+        createFinishLine();
+      }
+
+      function createTrees() {
+        for (let i = 0; i < 50; i++) {
+          const tree = new THREE.Group();
+          const trunk = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.3, 0.4, 3, 8),
+            new THREE.MeshLambertMaterial({ color: 0x8b4513 })
+          );
+          trunk.position.y = 1.5;
+          trunk.castShadow = true;
+          tree.add(trunk);
+          for (let j = 0; j < 3; j++) {
+            const f = new THREE.Mesh(
+              new THREE.SphereGeometry(1.5, 8, 8),
+              new THREE.MeshLambertMaterial({ color: 0x228b22 })
+            );
+            f.position.y = 3 + j * 1.2;
+            f.scale.setScalar(1 - j * 0.2);
+            f.castShadow = true;
+            tree.add(f);
+          }
+          const side = Math.random() > 0.5 ? 1 : -1;
+          tree.position.set(side * (20 + Math.random() * 80), 0, -150 + Math.random() * 300);
+          scene.add(tree);
+        }
+      }
+
+      let finishLineMesh = null;
+      function createFinishLine() {
+        if (finishLineMesh) scene.remove(finishLineMesh);
+        const geo = new THREE.PlaneGeometry(gameState.isOnline ? ROAD_WIDTH_ONLINE : ROAD_WIDTH_OFFLINE, 4);
+        const canvas = document.createElement("canvas");
+        canvas.width = 512;
+        canvas.height = 64;
+        const ctx = canvas.getContext("2d");
+        const sq = 16;
+        for (let x = 0; x < 32; x++)
+          for (let y = 0; y < 4; y++) {
+            ctx.fillStyle = (x + y) % 2 === 0 ? "#fff" : "#000";
+            ctx.fillRect(x * sq, y * sq, sq, sq);
+          }
+        const tex = new THREE.CanvasTexture(canvas);
+        finishLineMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
+        finishLineMesh.rotation.x = -Math.PI / 2;
+        finishLineMesh.position.set(0, 0.05, 10 - gameState.totalDistance / 5);
+        scene.add(finishLineMesh);
+      }
+
+      // ══════════════════════════════════════════════════════
+      //  CANVAS TEXTURE HELPERS
+      // ══════════════════════════════════════════════════════
+      function makeCanvasTex(w, h, fn) {
+        const c = document.createElement("canvas");
+        c.width = w; c.height = h;
+        fn(c.getContext("2d"), w, h);
+        return new THREE.CanvasTexture(c);
+      }
+
+      function getBodyMat(color) {
+        if (color === "golden") return new THREE.MeshStandardMaterial({ color:0xffd700, metalness:1, roughness:0.1, emissive:0xb8860b, emissiveIntensity:0.3 });
+        if (color === "toxictyranny") {
+          const t = makeCanvasTex(256,256,(ctx,w,h)=>{
+            const g=ctx.createLinearGradient(0,0,w,h);g.addColorStop(0,"#003300");g.addColorStop(0.5,"#39ff14");g.addColorStop(1,"#003300");
+            ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+            ctx.strokeStyle="rgba(0,255,0,.3)";ctx.lineWidth=1;
+            for(let y=0;y<h;y+=20)for(let x=0;x<w;x+=20){ctx.beginPath();ctx.arc(x,y,6,0,Math.PI*2);ctx.stroke();}
+          });
+          return new THREE.MeshStandardMaterial({ map:t, color:0x39ff14, metalness:0.3, roughness:0.6, emissive:0x00ff00, emissiveIntensity:0.4 });
+        }
+        if (color === "musicalscore") {
+          const t = makeCanvasTex(256,256,(ctx,w,h)=>{
+            const g=ctx.createLinearGradient(0,0,w,h);g.addColorStop(0,"#0a0020");g.addColorStop(0.5,"#1a0050");g.addColorStop(1,"#0a0030");
+            ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+            ctx.strokeStyle="rgba(180,100,255,.7)";ctx.lineWidth=1.5;
+            for(let i=0;i<5;i++){const y=30+i*12;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+            ctx.fillStyle="rgba(200,150,255,.9)";ctx.font="bold 20px serif";
+            ["♩","♪","♫","♬"].forEach((n,i)=>{ctx.fillText(n,10+i*60,60);ctx.fillText(n,30+i*60,150);});
+            ctx.font="bold 40px serif";ctx.fillStyle="rgba(160,80,255,.8)";ctx.fillText("𝄞",10,80);
+          });
+          return new THREE.MeshStandardMaterial({ map:t, metalness:0.5, roughness:0.4, emissive:0x330066, emissiveIntensity:0.5 });
+        }
+        if (color === "skullnbones") {
+          const t = makeCanvasTex(256,256,(ctx,w,h)=>{
+            ctx.fillStyle="#0d0000";ctx.fillRect(0,0,w,h);
+            ctx.strokeStyle="rgba(200,0,0,.6)";ctx.lineWidth=2;
+            for(let i=0;i<12;i++){ctx.beginPath();ctx.moveTo(Math.random()*w,Math.random()*h);ctx.lineTo(Math.random()*w,Math.random()*h);ctx.stroke();}
+            ctx.font="bold 32px serif";ctx.fillStyle="rgba(200,0,0,.85)";
+            ctx.fillText("☠",10,50);ctx.fillText("☠",100,130);ctx.fillText("☠",185,50);
+          });
+          return new THREE.MeshStandardMaterial({ map:t, metalness:0.7, roughness:0.3, emissive:0x440000, emissiveIntensity:0.6 });
+        }
+        const hx = colorMap[color];
+        return new THREE.MeshLambertMaterial({ color: hx, emissive: hx, emissiveIntensity: 0.15 });
+      }
+
+      function createWheelMesh(wid) {
+        const data = wheelData[wid] || wheelData.blackgrooves;
+        const geo = new THREE.CylinderGeometry(0.5, 0.5, 0.38, 24);
+        let mat;
+        const s = data.style;
+        if (s === "grooves") {
+          const t = makeCanvasTex(128,128,(ctx,w,h)=>{
+            ctx.fillStyle="#111";ctx.fillRect(0,0,w,h);
+            ctx.strokeStyle="#333";ctx.lineWidth=6;
+            for(let a=0;a<360;a+=45){ctx.save();ctx.translate(w/2,h/2);ctx.rotate(a*Math.PI/180);ctx.beginPath();ctx.moveTo(0,-50);ctx.lineTo(0,50);ctx.stroke();ctx.restore();}
+            [20,35,50].forEach(r=>{ctx.beginPath();ctx.arc(w/2,h/2,r,0,Math.PI*2);ctx.stroke();});
+          });
+          mat = new THREE.MeshStandardMaterial({ map:t, metalness:0.6, roughness:0.4 });
+        } else if (s === "rainbow") {
+          const t = makeCanvasTex(128,128,(ctx,w,h)=>{
+            const rc=["#ff0000","#ff7700","#ffff00","#00ff00","#0000ff","#8b00ff","#ff1493","#00ffff"];
+            rc.forEach((c,i)=>{ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(w/2,h/2);ctx.arc(w/2,h/2,60,(i/rc.length)*Math.PI*2,((i+1)/rc.length)*Math.PI*2);ctx.closePath();ctx.fill();});
+          });
+          mat = new THREE.MeshStandardMaterial({ map:t, metalness:0.3, roughness:0.4 });
+        } else if (s === "goldengrooves") {
+          const t = makeCanvasTex(128,128,(ctx,w,h)=>{
+            const g=ctx.createRadialGradient(w/2,h/2,5,w/2,h/2,60);
+            g.addColorStop(0,"#FFD700");g.addColorStop(0.5,"#FFA500");g.addColorStop(1,"#B8860B");
+            ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+            ctx.strokeStyle="rgba(255,255,200,.6)";ctx.lineWidth=3;
+            for(let a=0;a<360;a+=30){ctx.save();ctx.translate(w/2,h/2);ctx.rotate(a*Math.PI/180);ctx.beginPath();ctx.moveTo(0,-15);ctx.lineTo(0,-55);ctx.stroke();ctx.restore();}
+            [15,30,50].forEach(r=>{ctx.beginPath();ctx.arc(w/2,h/2,r,0,Math.PI*2);ctx.stroke();});
+          });
+          mat = new THREE.MeshStandardMaterial({ map:t, metalness:1, roughness:0.1 });
+        } else if (s === "toxic") {
+          const t = makeCanvasTex(128,128,(ctx,w,h)=>{
+            const g=ctx.createRadialGradient(w/2,h/2,5,w/2,h/2,60);
+            g.addColorStop(0,"#39ff14");g.addColorStop(0.5,"#00cc00");g.addColorStop(1,"#003300");
+            ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+            ctx.font="10px sans-serif";ctx.fillStyle="rgba(0,255,0,.6)";ctx.fillText("☣",w/2-5,h/2+5);
+          });
+          mat = new THREE.MeshStandardMaterial({ map:t, metalness:0.4, roughness:0.5, emissive:new THREE.Color(0x00ff00), emissiveIntensity:0.3 });
+        } else if (s === "bw") {
+          const t = makeCanvasTex(128,128,(ctx,w,h)=>{
+            for(let a=0;a<360;a+=30){ctx.fillStyle=Math.floor(a/30)%2===0?"#111":"#eee";ctx.beginPath();ctx.moveTo(w/2,h/2);ctx.arc(w/2,h/2,60,a*Math.PI/180,(a+30)*Math.PI/180);ctx.closePath();ctx.fill();}
+          });
+          mat = new THREE.MeshStandardMaterial({ map:t, metalness:0.5, roughness:0.3 });
+        } else if (s === "musical") {
+          const t = makeCanvasTex(128,128,(ctx,w,h)=>{
+            const g=ctx.createRadialGradient(w/2,h/2,5,w/2,h/2,60);
+            g.addColorStop(0,"#9900ff");g.addColorStop(0.5,"#330066");g.addColorStop(1,"#110033");
+            ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+            ctx.font="12px serif";ctx.fillStyle="rgba(200,150,255,.9)";ctx.fillText("♫",w/2-6,h/2+5);
+          });
+          mat = new THREE.MeshStandardMaterial({ map:t, metalness:0.6, roughness:0.3, emissive:new THREE.Color(0x330066), emissiveIntensity:0.4 });
+        } else if (s === "slick") {
+          const isR = wid === "redslicks";
+          const t = makeCanvasTex(128,128,(ctx,w,h)=>{
+            const g=ctx.createRadialGradient(w/2,h/2,5,w/2,h/2,60);
+            g.addColorStop(0,isR?"#ff4444":"#4488ff");g.addColorStop(0.6,isR?"#ff0000":"#0044ff");g.addColorStop(1,isR?"#cc0000":"#001888");
+            ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+          });
+          mat = new THREE.MeshStandardMaterial({ map:t, metalness:0.5, roughness:0.2 });
+        } else if (s === "pirate") {
+          const t = makeCanvasTex(128,128,(ctx,w,h)=>{
+            ctx.fillStyle="#0d0000";ctx.fillRect(0,0,w,h);
+            ctx.strokeStyle="#cc0000";ctx.lineWidth=4;
+            ctx.beginPath();ctx.moveTo(10,10);ctx.lineTo(w-10,h-10);ctx.stroke();
+            ctx.beginPath();ctx.moveTo(w-10,10);ctx.lineTo(10,h-10);ctx.stroke();
+            ctx.fillStyle="rgba(180,0,0,.9)";ctx.font="20px serif";ctx.fillText("☠",w/2-10,h/2+8);
+          });
+          mat = new THREE.MeshStandardMaterial({ map:t, metalness:0.7, roughness:0.3, emissive:new THREE.Color(0x330000), emissiveIntensity:0.4 });
+        } else if (s === "skelly") {
+          const t = makeCanvasTex(128,128,(ctx,w,h)=>{
+            ctx.fillStyle="#e8e8e8";ctx.fillRect(0,0,w,h);
+            for(let a=0;a<360;a+=60){
+              ctx.save();ctx.translate(w/2,h/2);ctx.rotate(a*Math.PI/180);
+              ctx.fillStyle="#ddd";ctx.fillRect(-5,-50,10,100);
+              ctx.beginPath();ctx.arc(0,-45,8,0,Math.PI*2);ctx.fillStyle="#ccc";ctx.fill();
+              ctx.beginPath();ctx.arc(0,45,8,0,Math.PI*2);ctx.fill();ctx.restore();
+            }
+          });
+          mat = new THREE.MeshStandardMaterial({ map:t, metalness:0.1, roughness:0.7 });
+        } else {
+          mat = new THREE.MeshLambertMaterial({ color: data.color });
+        }
+        const w = new THREE.Mesh(geo, mat);
+        w.rotation.z = Math.PI / 2;
+        w.castShadow = true;
+        return w;
+      }
+
+      function createRimMesh(wid) {
+        const data = wheelData[wid] || wheelData.blackgrooves;
+        const rim = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.28, 0.28, 0.4, 12),
+          new THREE.MeshStandardMaterial({ color:data.rimColor, metalness:0.9, roughness:0.15 })
+        );
+        rim.rotation.z = Math.PI / 2;
+        rim.castShadow = true;
+        return rim;
+      }
+
+      // ══════════════════════════════════════════════════════
+      //  CAR BUILDER
+      // ══════════════════════════════════════════════════════
+      function buildCar(color, wid, position) {
+        const grp = new THREE.Group();
+        const bodyMat = color === "rainbow"
+          ? new THREE.MeshLambertMaterial({ color: 0xff0000 })
+          : getBodyMat(color);
+        const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1, 4.5), bodyMat);
+        body.position.y = 0.6; body.castShadow = true; body.receiveShadow = true;
+        grp.add(body);
+        const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.8, 2.5), new THREE.MeshLambertMaterial({ color: 0x222222 }));
+        cabin.position.set(0, 1.4, -0.2); cabin.castShadow = true;
+        grp.add(cabin);
+        if (color === "golden") {
+          const tm = new THREE.MeshStandardMaterial({ color:0xffd700, metalness:1, roughness:0.05 });
+          const tr = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.08, 4.6), tm);
+          tr.position.y = 1.12; grp.add(tr);
+        }
+        if (color === "toxictyranny") {
+          const sm = new THREE.MeshStandardMaterial({ color:0x39ff14, emissive:0x00ff00, emissiveIntensity:0.6 });
+          for (let i=0;i<4;i++){const sp=new THREE.Mesh(new THREE.ConeGeometry(0.12,0.5,6),sm);sp.position.set(-0.6+i*0.4,1.9,-0.2);grp.add(sp);}
+        }
+        if (color === "musicalscore") {
+          const gm = new THREE.MeshStandardMaterial({ color:0x9900ff, emissive:0x660099, emissiveIntensity:0.8 });
+          const bl = new THREE.Mesh(new THREE.BoxGeometry(0.05,0.3,3),gm); bl.position.set(-1.13,0.7,0); grp.add(bl);
+          const br = new THREE.Mesh(new THREE.BoxGeometry(0.05,0.3,3),gm); br.position.set(1.13,0.7,0); grp.add(br);
+        }
+        if (color === "skullnbones") {
+          const bm = new THREE.MeshStandardMaterial({ color:0xcc0000, emissive:0x660000, emissiveIntensity:0.6 });
+          for(let i=0;i<3;i++){const bn=new THREE.Mesh(new THREE.BoxGeometry(1.8,0.06,0.1),bm);bn.position.set(0,1.9,-0.6+i*0.6);grp.add(bn);}
+        }
+        const wp = [[-1.3,0.5,1.4],[1.3,0.5,1.4],[-1.3,0.5,-1.4],[1.3,0.5,-1.4]];
+        wp.forEach(p => {
+          const wg = new THREE.Group();
+          wg.add(createWheelMesh(wid));
+          wg.add(createRimMesh(wid));
+          wg.position.set(p[0],p[1],p[2]);
+          grp.add(wg);
+        });
+        if (position) grp.position.copy(position);
+        else grp.position.set(0, 0, 10);
+        grp.rotation.y = Math.PI;
+        scene.add(grp);
+        return grp;
+      }
+
+      // ══════════════════════════════════════════════════════
+      //  MENU 3D CAR PREVIEW
+      // ══════════════════════════════════════════════════════
+      let menuScene, menuCamera, menuRenderer, menuCarObj, menuAnimId;
+      function initMenuCar() {
+        const cvs = document.getElementById("menuCarCanvas");
+        if (!cvs) return;
+        menuScene = new THREE.Scene();
+        menuScene.background = new THREE.Color(0x0d1128);
+        menuCamera = new THREE.PerspectiveCamera(50, cvs.width/cvs.height, 0.1, 100);
+        menuCamera.position.set(0, 3, 7);
+        menuCamera.lookAt(0, 0.5, 0);
+        menuRenderer = new THREE.WebGLRenderer({ canvas: cvs, antialias: true });
+        menuRenderer.setSize(cvs.width, cvs.height);
+        menuRenderer.shadowMap.enabled = true;
+        menuScene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const dl = new THREE.DirectionalLight(0xffffff, 0.8);
+        dl.position.set(5, 10, 5); menuScene.add(dl);
+        const pl = new THREE.PointLight(0xff0080, 0.5, 20);
+        pl.position.set(-3, 3, 3); menuScene.add(pl);
+        rebuildMenuCar();
+        function animateMenu() {
+          menuAnimId = requestAnimationFrame(animateMenu);
+          if (menuCarObj) menuCarObj.rotation.y += 0.012;
+          menuRenderer.render(menuScene, menuCamera);
+        }
+        animateMenu();
+      }
+
+      function rebuildMenuCar() {
+        if (!menuScene) return;
+        if (menuCarObj) menuScene.remove(menuCarObj);
+        const color = gameState.playerCarColor;
+        const wid = gameState.selectedWheel;
+        const grp = new THREE.Group();
+        const bodyMat = getBodyMat(color);
+        const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1, 4.5), bodyMat);
+        body.position.y = 0.6; grp.add(body);
+        const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.8, 2.5), new THREE.MeshLambertMaterial({ color: 0x222222 }));
+        cabin.position.set(0, 1.4, -0.2); grp.add(cabin);
+        const wp = [[-1.3,0.5,1.4],[1.3,0.5,1.4],[-1.3,0.5,-1.4],[1.3,0.5,-1.4]];
+        wp.forEach(p => {
+          const wg = new THREE.Group();
+          wg.add(createWheelMesh(wid));
+          wg.add(createRimMesh(wid));
+          wg.position.set(p[0],p[1],p[2]);
+          grp.add(wg);
+        });
+        grp.position.y = -0.5;
+        menuScene.add(grp);
+        menuCarObj = grp;
+      }
+
+      // ══════════════════════════════════════════════════════
+      //  STATS CAR CANVAS (2D preview)
+      // ══════════════════════════════════════════════════════
+      function drawStatsCarCanvas(canvasEl, color, wid) {
+        const ctx = canvasEl.getContext("2d");
+        const w = canvasEl.width, h = canvasEl.height;
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = "rgba(10,14,39,.6)";
+        ctx.fillRect(0, 0, w, h);
+        const cx = w/2, cy = h*0.55;
+        ctx.save();
+        let bodyColor = "#ff0000";
+        if (color === "golden") bodyColor = "#FFD700";
+        else if (color === "toxictyranny") bodyColor = "#39ff14";
+        else if (color === "rainbow") {
+          const g = ctx.createLinearGradient(cx-55, 0, cx+55, 0);
+          ["#ff0000","#ff7700","#ffff00","#00ff00","#0000ff","#8b00ff"].forEach((c,i)=>g.addColorStop(i/5,c));
+          bodyColor = g;
+        } else if (color === "musicalscore") bodyColor = "#1a0050";
+        else if (color === "skullnbones") bodyColor = "#1a0000";
+        else if (colorMap[color] && typeof colorMap[color] === "number") {
+          bodyColor = "#" + colorMap[color].toString(16).padStart(6,"0");
+        }
+        ctx.fillStyle = bodyColor;
+        ctx.beginPath();
+        ctx.roundRect(cx-55, cy-12, 110, 28, 8);
+        ctx.fill();
+        ctx.fillStyle = "#222";
+        ctx.beginPath();
+        ctx.roundRect(cx-28, cy-34, 56, 24, 6);
+        ctx.fill();
+        const wc = wid==="goldengrooves"?"#FFD700":wid==="rainbowwheels"?"#ff4444":wid==="toxicthreads"?"#39ff14":wid==="musicalwheels"?"#6600cc":wid==="redslicks"?"#ff0000":wid==="blueslicks"?"#0044ff":wid==="pirateslicks"?"#440000":wid==="skellywhite"?"#e0e0e0":"#111";
+        [[-38,cy+16],[38,cy+16]].forEach(([wx,wy])=>{
+          ctx.beginPath();ctx.arc(wx+cx,wy,13,0,Math.PI*2);ctx.fillStyle=wc;ctx.fill();
+          ctx.beginPath();ctx.arc(wx+cx,wy,6,0,Math.PI*2);ctx.fillStyle="#888";ctx.fill();
+        });
+        ctx.fillStyle="#ffff88";ctx.beginPath();ctx.ellipse(cx+48,cy-4,6,4,0,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle="#ff4444";ctx.beginPath();ctx.ellipse(cx-48,cy-4,6,4,0,0,Math.PI*2);ctx.fill();
+        ctx.restore();
+      }
+
+      // ══════════════════════════════════════════════════════
+      //  LANE POSITIONS
+      // ══════════════════════════════════════════════════════
+      function getLanePositions(online) {
+        return online ? [-10, -6, -2, 2, 6, 10] : [-6, -2, 2, 6];
+      }
+
+      // ══════════════════════════════════════════════════════
+      //  GAME INIT
+      // ══════════════════════════════════════════════════════
+      function initGame(online) {
+        gameState.isOnline = !!online;
+        gameState.score = 0;
+        gameState.gameSpeed = 0.35;
+        gameState.finishDistance = online ? 2000 : 1000;
+        gameState.totalDistance = gameState.finishDistance;
+
+        if (playerCarMesh) { scene.remove(playerCarMesh); playerCarMesh = null; }
+        enemyCarMeshes.forEach(c => { if (c && c.mesh) scene.remove(c.mesh); });
+        enemyCarMeshes = [];
+        coinMeshes.forEach(c => { if (c && c.mesh) scene.remove(c.mesh); });
+        coinMeshes = [];
+        gameState.enemyCars = [];
+        gameState.coins = [];
+        gameState.isPaused = false;
+
+        createEnvironment(online);
+
+        document.getElementById("scoreDisplay").textContent = "Score: 0";
+        document.getElementById("finishDistance").style.display = "block";
+
+        const lanePositions = getLanePositions(online);
+        const laneCount = lanePositions.length;
+
+        if (!online) {
+          const ec = ["blue","green","yellow","purple","orange"];
+          for (let i = 0; i < 5; i++) {
+            const lane = Math.floor(Math.random() * laneCount);
+            const car = createEnemyCar(ec[i % ec.length], lane, -50 - i*30 - Math.random()*20, online);
+            gameState.enemyCars.push(car);
+            enemyCarMeshes.push(car);
+          }
+        }
+
+        for (let i = 0; i < 12; i++) {
+          const coin = createCoin(online);
+          gameState.coins.push(coin);
+          coinMeshes.push(coin);
+        }
+
+        const startLane = Math.floor(laneCount / 2);
+        playerCarMesh = buildCar(gameState.playerCarColor, gameState.selectedWheel, new THREE.Vector3(lanePositions[startLane], 0, 10));
+        gameState.playerCar = { mesh: playerCarMesh, x: lanePositions[startLane], lane: startLane, distanceTravelled: 0 };
+
+        document.getElementById("gameUI").style.display = "block";
+        if (online) document.getElementById("inGameLeaderboard").style.display = "block";
+        else document.getElementById("inGameLeaderboard").style.display = "none";
+      }
+
+      function createEnemyCar(color, lane, z, online) {
+        const lp = getLanePositions(online || false);
+        const mesh = buildCar(color || "blue", "blackgrooves", new THREE.Vector3(lp[lane] || 0, 0, z || -60));
+        return { mesh, lane: lane || 0, speed: gameState.gameSpeed + Math.random()*0.15, online: online||false };
+      }
+
+      function createCoin(online) {
+        const geo = new THREE.CylinderGeometry(0.6, 0.6, 0.2, 16);
+        const mat = new THREE.MeshStandardMaterial({ color:0xffd700, metalness:0.8, roughness:0.2 });
+        const coin = new THREE.Mesh(geo, mat);
+        coin.rotation.x = Math.PI / 2;
+        const lp = getLanePositions(online || false);
+        const lane = Math.floor(Math.random() * lp.length);
+        coin.position.set(lp[lane], 1.2, -50 + Math.random() * -150);
+        coin.castShadow = true;
+        scene.add(coin);
+        return { mesh: coin, collected: false };
+      }
+
+      // ══════════════════════════════════════════════════════
+      //  GAME LOOP
+      // ══════════════════════════════════════════════════════
+      function updateGame() {
+        if (gameState.scene !== "playing" || gameState.isPaused) return;
+        const dt = clock.getDelta();
+        const spd = gameState.gameSpeed * 70 * dt;
+
+        laneMarkerGroup.children.forEach(m => {
+          m.position.z += spd;
+          if (m.position.z > 20) m.position.z -= 300;
+        });
+        groundMesh.position.z += spd;
+        if (groundMesh.position.z > 150) groundMesh.position.z -= 150;
+
+        if (gameState.playerCar && gameState.playerCar.mesh) {
+          const lp = getLanePositions(gameState.isOnline);
+          const maxLane = lp.length - 1;
+          if (gameState.playerCar.lane > maxLane) gameState.playerCar.lane = maxLane;
+          const tx = lp[gameState.playerCar.lane];
+          gameState.playerCar.mesh.position.x += (tx - gameState.playerCar.mesh.position.x) * 0.15;
+          gameState.playerCar.distanceTravelled += spd * 0.5;
+
+          gameState.finishDistance = Math.max(0, gameState.totalDistance - Math.floor(gameState.playerCar.distanceTravelled));
+          document.getElementById("finishDistance").textContent = "🏁 Finish: " + gameState.finishDistance + "m";
+
+          if (finishLineMesh) finishLineMesh.position.z += spd;
+
+          if (gameState.finishDistance <= 0) {
+            gameOver(true);
+            return;
+          }
+
+          if (gameState.isOnline && socket) {
+            socket.emit("playerMove", { lane: gameState.playerCar.lane, z: gameState.playerCar.distanceTravelled, score: gameState.score });
+          }
+        }
+
+        if (!gameState.isOnline) {
+          const lp = getLanePositions(false);
+          gameState.enemyCars.forEach(car => {
+            if (!car || !car.mesh) return;
+            car.mesh.position.z += car.speed * 70 * dt;
+            if (car.mesh.position.z > 20) {
+              car.mesh.position.z = -120 - Math.random() * 80;
+              car.lane = Math.floor(Math.random() * lp.length);
+              car.mesh.position.x = lp[car.lane];
+            }
+            if (gameState.playerCar && gameState.playerCar.mesh) {
+              if (car.mesh.position.distanceTo(gameState.playerCar.mesh.position) < 3) {
+                gameOver(false);
+                return;
+              }
+            }
+          });
+        }
+
+        const lp = getLanePositions(gameState.isOnline);
+        gameState.coins.forEach(coin => {
+          if (!coin || !coin.mesh) return;
+          coin.mesh.position.z += gameState.gameSpeed * 70 * dt;
+          coin.mesh.rotation.z += 0.05;
+          if (!coin.collected && gameState.playerCar && gameState.playerCar.mesh) {
+            if (coin.mesh.position.distanceTo(gameState.playerCar.mesh.position) < 2) {
+              coin.collected = true;
+              coin.mesh.visible = false;
+              gameState.score += 10;
+              gameState.totalCoins += 10;
+              saveLocal();
+              syncUserToServer();
+              document.getElementById("scoreDisplay").textContent = "Score: " + gameState.score;
+              updateInGameLeaderboard();
+            }
+          }
+          if (coin.mesh.position.z > 20) {
+            coin.mesh.position.z = -100 + Math.random() * -100;
+            coin.mesh.position.x = lp[Math.floor(Math.random() * lp.length)];
+            coin.collected = false;
+            coin.mesh.visible = true;
+          }
+        });
+
+        gameState.gameSpeed = Math.min(gameState.gameSpeed + 0.00005, 0.8);
+      }
+
+      function gameOver(finished) {
+        gameState.scene = "gameover";
+        document.getElementById("gameUI").style.display = "none";
+        document.getElementById("finishDistance").style.display = "none";
+        document.getElementById("inGameLeaderboard").style.display = "none";
+        document.getElementById("finalScore").textContent = gameState.score;
+
+        if (finished) gameState.totalWins = (gameState.totalWins || 0) + 1;
+        else gameState.totalLosses = (gameState.totalLosses || 0) + 1;
+        syncUserToServer();
+
+        if (gameState.isOnline && socket) {
+          socket.emit("playerFinished", { uid: MY_UID, score: gameState.score, position: finished ? 1 : 99 });
+        } else {
+          showPostRaceLB([{ uid: MY_UID, name: gameState.userName, score: gameState.score, position: 1 }], true);
+        }
+        document.getElementById("gameOverScreen").style.display = "flex";
+      }
+
+      function showPostRaceLB(results, offline) {
+        const entries = document.getElementById("postRaceLBEntries");
+        entries.innerHTML = "";
+        const medals = ["🥇","🥈","🥉"];
+        const sorted = [...results].sort((a,b) => b.score - a.score);
+        sorted.forEach((r, i) => {
+          const row = document.createElement("div");
+          row.className = "postlb-row";
+          row.innerHTML = `<span class="postlb-medal">${medals[i]||"🏅"}</span><span class="postlb-rank">${i+1}</span><span class="postlb-name">${r.name||r.uid}</span><span class="postlb-score">${r.score} pts</span>`;
+          if (r.uid !== MY_UID) {
+            row.style.cursor = "pointer";
+            row.addEventListener("click", () => showUserStats(r.uid));
+          }
+          entries.appendChild(row);
+        });
+      }
+
+      // ══════════════════════════════════════════════════════
+      //  IN-GAME LEADERBOARD
+      // ══════════════════════════════════════════════════════
+      let inGameLBData = {};
+      function updateInGameLeaderboard() {
+        inGameLBData[MY_UID] = { name: gameState.userName, score: gameState.score };
+        const container = document.getElementById("lbEntries");
+        container.innerHTML = "";
+        const sorted = Object.entries(inGameLBData).sort((a,b) => b[1].score - a[1].score).slice(0, 5);
+        sorted.forEach(([uid, d], i) => {
+          const el = document.createElement("div");
+          el.className = "lb-entry";
+          el.innerHTML = `<span class="lb-rank">${i+1}</span><span class="lb-name">${uid===MY_UID?"<b>"+d.name+"</b>":d.name}</span><span class="lb-score">${d.score}</span>`;
+          container.appendChild(el);
+        });
+      }
+
+      // ══════════════════════════════════════════════════════
+      //  SOCKET.IO
+      // ══════════════════════════════════════════════════════
+      let socket = null;
+      function initSocket() {
+        try { socket = io(); } catch (e) { console.warn("Socket.io not available"); return; }
+        socket.on("connect", () => {
+          socket.emit("register", { uid: MY_UID, name: gameState.userName });
+        });
+        socket.on("registered", (user) => {
+          if (user && user.totalCoins !== undefined) {
+            gameState.totalCoins = Math.max(gameState.totalCoins, user.totalCoins);
+            gameState.totalWins = user.totalWins || 0;
+            gameState.totalLosses = user.totalLosses || 0;
+            if (user.ownedColors) gameState.ownedColors = user.ownedColors;
+            if (user.ownedWheels) gameState.ownedWheels = user.ownedWheels;
+            saveLocal();
+          }
+          updateFriendNotifications();
+        });
+        socket.on("onlineCount", (n) => {
+          document.getElementById("onlineCountMenu").textContent = n;
+          document.getElementById("onlineCountBar").textContent = n;
+        });
+        socket.on("roomUpdate", renderWaitingRoom);
+        socket.on("countdown", ({ seconds }) => {
+          document.getElementById("countdown").textContent = seconds;
+          let s = seconds;
+          const t = setInterval(() => {
+            s--;
+            if (s <= 0) clearInterval(t);
+            document.getElementById("countdown").textContent = s > 0 ? s : "GO!";
+          }, 1000);
+        });
+        socket.on("raceStart", ({ players }) => {
+          document.getElementById("waitingRoom").style.display = "none";
+          gameState.scene = "playing";
+          const lp = getLanePositions(true);
+          players.forEach(p => {
+            if (p.uid === MY_UID) return;
+            const m = buildCar(p.color||"blue", p.wheel||"blackgrooves", new THREE.Vector3(lp[p.lane||0]||0, 0, 10));
+            gameState.otherPlayers[p.uid] = { mesh: m, name: p.name, lane: p.lane, score: 0 };
+          });
+          startBackgroundMusic();
+          initGame(true);
+        });
+        socket.on("otherPlayerMove", ({ uid, lane, z, score }) => {
+          if (gameState.otherPlayers[uid]) {
+            const op = gameState.otherPlayers[uid];
+            const lp = getLanePositions(true);
+            if (op.mesh) op.mesh.position.x = lp[Math.min(lane, lp.length-1)] || 0;
+            op.lane = lane; op.score = score || 0;
+            inGameLBData[uid] = { name: op.name||uid.slice(0,6), score: op.score };
+            updateInGameLeaderboard();
+          }
+        });
+        socket.on("raceEnd", ({ results }) => {
+          showPostRaceLB(results, false);
+          Object.values(gameState.otherPlayers).forEach(p => { if (p.mesh) scene.remove(p.mesh); });
+          gameState.otherPlayers = {};
+          inGameLBData = {};
+        });
+        socket.on("raceProgress", (finished) => {
+          finished.forEach(r => { inGameLBData[r.uid] = { name: r.name||r.uid.slice(0,6), score: r.score }; });
+          updateInGameLeaderboard();
+        });
+        socket.on("friendRequest", ({ fromUID, fromName }) => {
+          updateFriendNotifications();
+          showToast(`Friend request from ${fromName||fromUID}`);
+        });
+      }
+
+      function renderWaitingRoom(room) {
+        const container = document.getElementById("waitingPlayers");
+        container.innerHTML = "";
+        (room.players || []).forEach(p => {
+          const div = document.createElement("div");
+          div.className = "waiting-player";
+          div.innerHTML = `<div class="wp-name">${p.name||p.uid.slice(0,8)}</div><div class="wp-color" style="color:${getColorCSS(p.color||'red')}">${colorDisplayNames[p.color||"red"]||p.color}</div>`;
+          container.appendChild(div);
+        });
+      }
+
+      function getColorCSS(c) {
+        const m = { red:"#ff4444",blue:"#4488ff",green:"#44ff44",yellow:"#ffff44",purple:"#cc44ff",orange:"#ff8844",white:"#ffffff",black:"#aaaaaa",golden:"#FFD700",toxictyranny:"#39ff14",rainbow:"#ff9944",musicalscore:"#9944ff",skullnbones:"#cc4444" };
+        return m[c] || "#fff";
+      }
+
+      // ══════════════════════════════════════════════════════
+      //  SERVER API HELPERS
+      // ══════════════════════════════════════════════════════
+      const API = window.location.origin;
+      async function syncUserToServer() {
+        try {
+          await fetch(`${API}/api/user/${MY_UID}/update`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: gameState.userName,
+              totalCoins: gameState.totalCoins,
+              ownedColors: gameState.ownedColors,
+              ownedWheels: gameState.ownedWheels,
+              selectedColor: gameState.playerCarColor,
+              selectedWheel: gameState.selectedWheel,
+              totalWins: gameState.totalWins || 0,
+              totalLosses: gameState.totalLosses || 0,
+              totalColors: gameState.ownedColors.length,
+              totalWheels: gameState.ownedWheels.length,
+            }),
+          });
+        } catch (e) {}
+      }
+
+      async function initUser() {
+        try {
+          const res = await fetch(`${API}/api/user`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ uid: MY_UID, name: gameState.userName }),
+          });
+          const user = await res.json();
+          if (user && !user.error) {
+            gameState.totalCoins = Math.max(gameState.totalCoins, user.totalCoins || 0);
+            gameState.totalWins = user.totalWins || 0;
+            gameState.totalLosses = user.totalLosses || 0;
+            if (user.ownedColors && user.ownedColors.length > gameState.ownedColors.length) gameState.ownedColors = user.ownedColors;
+            if (user.ownedWheels && user.ownedWheels.length > gameState.ownedWheels.length) gameState.ownedWheels = user.ownedWheels;
+            if (user.name) gameState.userName = user.name;
+            saveLocal();
+          }
+        } catch (e) {
+          // Server nahi mila — offline mode chalega
+          console.warn("Server not reachable, running in offline mode.");
+        }
+        updateUsernameDisplay();
+        loadLeaderboard().catch(() => {});
+        updateFriendNotifications().catch(() => {});
+      }
+
+      async function loadLeaderboard() {
+        const res = await fetch(`${API}/api/leaderboard`);
+        window.globalLeaderboard = await res.json();
+      }
+
+      async function updateFriendNotifications() {
+        const res = await fetch(`${API}/api/user/${MY_UID}`);
+        const user = await res.json();
+        if (!user || user.error) return;
+        const count = (user.friendRequests || []).length;
+        const badge = document.getElementById("friendNotifBadge");
+        if (count > 0) { badge.style.display = "flex"; badge.textContent = count; }
+        else badge.style.display = "none";
+      }
+
+      async function showUserStats(uid) {
+        if (!uid) return;
+        try {
+          const res = await fetch(`${API}/api/user/${uid}`);
+          const user = await res.json();
+          if (!user || user.error) return;
+
+          document.getElementById("statsModalTitle").textContent = (user.name || uid) + "'s STATS";
+          const table = document.getElementById("statsTableContent");
+          const color = user.selectedColor || "red";
+          const wid = user.selectedWheel || "blackgrooves";
+
+          const cvs = document.getElementById("statsCarCanvas");
+          drawStatsCarCanvas(cvs, color, wid);
+
+          table.innerHTML = `
+            <div class="stat-row"><span class="s-label">Total Coins</span><span class="s-val">💰 ${user.totalCoins||0}</span></div>
+            <div class="stat-row"><span class="s-label">Total Wins</span><span class="s-val">🏆 ${user.totalWins||0}</span></div>
+            <div class="stat-row"><span class="s-label">Total Losses</span><span class="s-val">❌ ${user.totalLosses||0}</span></div>
+            <div class="stat-row"><span class="s-label">Colors Owned</span><span class="s-val">🎨 ${(user.ownedColors||[]).length}</span></div>
+            <div class="stat-row"><span class="s-label">Wheels Owned</span><span class="s-val">🔧 ${(user.ownedWheels||[]).length}</span></div>
+            <div class="stat-row"><span class="s-label">Races Played</span><span class="s-val">🏁 ${user.races||0}</span></div>
+            <div class="uid-row">
+              <span class="uid-text">UID: ${user.uid||uid}</span>
+              <button class="uid-copy-btn" id="uidCopyBtn" onclick="copyUID('${user.uid||uid}')">📋 Copy</button>
+            </div>
+          `;
+
+          const addBtn = document.getElementById("addFriendBtn");
+          if (uid === MY_UID) {
+            addBtn.style.display = "none";
+          } else {
+            addBtn.style.display = "block";
+            addBtn.disabled = false;
+            addBtn.textContent = "👥 Add Friend";
+            addBtn.onclick = async () => {
+              try {
+                const r = await fetch(`${API}/api/friend-request`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ fromUID: MY_UID, toUID: uid }),
+                });
+                const d = await r.json();
+                if (d.ok) { addBtn.textContent = "✅ Request Sent"; addBtn.disabled = true; }
+                else { addBtn.textContent = "⚠️ " + (d.error || "Error"); }
+              } catch (e) { addBtn.textContent = "⚠️ Failed"; }
+            };
+          }
+          document.getElementById("statsModal").style.display = "flex";
+        } catch (e) { console.error(e); }
+      }
+
+      function copyUID(uid) {
+        navigator.clipboard.writeText(uid).then(() => {
+          const btn = document.getElementById("uidCopyBtn");
+          if (btn) {
+            btn.textContent = "✅ Copied!";
+            btn.classList.add("copied");
+            setTimeout(() => { btn.textContent = "📋 Copy"; btn.classList.remove("copied"); }, 2000);
+          }
+        }).catch(() => {
+          const ta = document.createElement("textarea");
+          ta.value = uid; ta.style.position = "fixed"; ta.style.opacity = "0";
+          document.body.appendChild(ta); ta.select(); document.execCommand("copy");
+          document.body.removeChild(ta);
+          showToast("UID copied!");
+        });
+      }
+
+      async function showMyStats() { await showUserStats(MY_UID); }
+
+      async function showFriendsModal() {
+        document.getElementById("friendsModal").style.display = "flex";
+        showFriendTab("friends");
+      }
+
+      async function showFriendTab(tab) {
+        document.getElementById("ftFriends").classList.toggle("active", tab === "friends");
+        document.getElementById("ftRequests").classList.toggle("active", tab === "requests");
+        document.getElementById("friendsListPanel").style.display = tab === "friends" ? "block" : "none";
+        document.getElementById("requestsListPanel").style.display = tab === "requests" ? "block" : "none";
+
+        if (tab === "friends") {
+          try {
+            const res = await fetch(`${API}/api/user/${MY_UID}/friends`);
+            const friends = await res.json();
+            const panel = document.getElementById("friendsListPanel");
+            if (!friends.length) { panel.innerHTML = '<div class="empty-msg">No friends yet. Add some!</div>'; return; }
+            panel.innerHTML = friends.map(f => `
+              <div class="friend-item">
+                <span class="friend-item-name">${f.name||f.uid}</span>
+                <span class="friend-item-coins">💰 ${f.totalCoins||0}</span>
+                <button class="friend-action-btn btn-view" onclick="showUserStats('${f.uid}')">View</button>
+              </div>`).join("");
+          } catch (e) {}
+        } else {
+          try {
+            const res = await fetch(`${API}/api/user/${MY_UID}/requests`);
+            const reqs = await res.json();
+            const panel = document.getElementById("requestsListPanel");
+            document.getElementById("reqCount").textContent = reqs.length ? `(${reqs.length})` : "";
+            if (!reqs.length) { panel.innerHTML = '<div class="empty-msg">No pending requests.</div>'; return; }
+            panel.innerHTML = reqs.map(r => `
+              <div class="friend-item">
+                <span class="friend-item-name">${r.name||r.uid}</span>
+                <button class="friend-action-btn btn-accept" onclick="acceptFriend('${r.uid}')">Accept</button>
+                <button class="friend-action-btn btn-reject" onclick="rejectFriend('${r.uid}')">Reject</button>
+              </div>`).join("");
+          } catch (e) {}
+        }
+      }
+
+      async function acceptFriend(fromUID) {
+        try {
+          await fetch(`${API}/api/friend-accept`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ uid: MY_UID, fromUID }) });
+        } catch (e) {}
+        showFriendTab("requests");
+        updateFriendNotifications().catch(() => {});
+        showToast("Friend accepted!");
+      }
+
+      async function rejectFriend(fromUID) {
+        try {
+          await fetch(`${API}/api/friend-reject`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ uid: MY_UID, fromUID }) });
+        } catch (e) {}
+        showFriendTab("requests");
+        updateFriendNotifications().catch(() => {});
+      }
+
+      // ── UID Search ──
+      document.getElementById("uidSearchBtn").addEventListener("click", sendFriendRequestByUID);
+      document.getElementById("uidSearchInput").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") sendFriendRequestByUID();
+      });
+
+      async function sendFriendRequestByUID() {
+        const input = document.getElementById("uidSearchInput");
+        const resultEl = document.getElementById("uidSearchResult");
+        const toUID = input.value.trim().toUpperCase();
+        resultEl.textContent = "";
+        resultEl.className = "uid-search-result";
+
+        if (!toUID) { resultEl.textContent = "Please enter a UID."; resultEl.classList.add("error"); return; }
+        if (toUID === MY_UID) { resultEl.textContent = "You can't add yourself!"; resultEl.classList.add("error"); return; }
+        if (toUID.length !== 10) { resultEl.textContent = "UIDs are 10 characters long."; resultEl.classList.add("error"); return; }
+
+        resultEl.textContent = "Sending...";
+        try {
+          const checkRes = await fetch(`${API}/api/user/${toUID}`);
+          const checkUser = await checkRes.json();
+          if (!checkUser || checkUser.error) {
+            resultEl.textContent = "User not found. Check the UID.";
+            resultEl.classList.add("error");
+            return;
+          }
+          const r = await fetch(`${API}/api/friend-request`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fromUID: MY_UID, toUID }),
+          });
+          const d = await r.json();
+          if (d.ok) {
+            resultEl.textContent = `✅ Request sent to ${checkUser.name || toUID}!`;
+            resultEl.classList.add("success");
+            input.value = "";
+          } else {
+            resultEl.textContent = "⚠️ " + (d.error || "Could not send request.");
+            resultEl.classList.add("error");
+          }
+        } catch (e) {
+          resultEl.textContent = "⚠️ Failed. Check connection.";
+          resultEl.classList.add("error");
+        }
+      }
+
+      // ══════════════════════════════════════════════════════
+      //  USERNAME
+      // ══════════════════════════════════════════════════════
+      function updateUsernameDisplay() {
+        document.getElementById("usernameDisplay").textContent = gameState.userName;
+      }
+      document.getElementById("editNameBtn").addEventListener("click", () => {
+        const inp = document.getElementById("usernameInput");
+        const btn = document.getElementById("saveNameBtn");
+        inp.value = gameState.userName;
+        inp.style.display = "inline"; btn.style.display = "inline";
+        document.getElementById("usernameDisplay").style.display = "none";
+        inp.focus();
+      });
+      document.getElementById("saveNameBtn").addEventListener("click", saveName);
+      document.getElementById("usernameInput").addEventListener("keydown", e => { if (e.key === "Enter") saveName(); });
+      function saveName() {
+        const v = document.getElementById("usernameInput").value.trim();
+        if (v.length > 0) {
+          gameState.userName = v;
+          saveLocal(); syncUserToServer();
+          if (socket) socket.emit("register", { uid: MY_UID, name: gameState.userName });
+        }
+        document.getElementById("usernameDisplay").textContent = gameState.userName;
+        document.getElementById("usernameInput").style.display = "none";
+        document.getElementById("saveNameBtn").style.display = "none";
+        document.getElementById("usernameDisplay").style.display = "inline";
+      }
+
+      // ══════════════════════════════════════════════════════
+      //  TOAST
+      // ══════════════════════════════════════════════════════
+      function showToast(msg) {
+        let t = document.getElementById("toastEl");
+        if (!t) {
+          t = document.createElement("div");
+          t.id = "toastEl";
+          t.style.cssText = "position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#0d1128;border:2px solid #ff0080;color:#fff;padding:.6rem 1.4rem;border-radius:12px;z-index:9000;font-size:.9rem;pointer-events:none;transition:opacity .4s;";
+          document.body.appendChild(t);
+        }
+        t.textContent = msg;
+        t.style.opacity = "1";
+        clearTimeout(t._timer);
+        t._timer = setTimeout(() => (t.style.opacity = "0"), 3000);
+      }
+
+      // ══════════════════════════════════════════════════════
+      //  CUSTOMIZE PALETTES
+      // ══════════════════════════════════════════════════════
+      function switchTab(tab) {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+        document.getElementById("tab" + tab.charAt(0).toUpperCase() + tab.slice(1) + "Btn").classList.add("active");
+        document.getElementById("tab" + tab.charAt(0).toUpperCase() + tab.slice(1) + "Panel").classList.add("active");
+      }
+
+      function updateColorPalette() {
+        const palette = document.getElementById("colorPalette");
+        palette.innerHTML = "";
+        const colors = ["red","blue","green","yellow","purple","orange","white","black","golden","toxictyranny","rainbow","musicalscore","skullnbones"];
+        colors.forEach(color => {
+          const wrapper = document.createElement("div");
+          wrapper.style.cssText = "position:relative;display:flex;flex-direction:column;align-items:center;padding-bottom:26px;";
+          const swatch = document.createElement("div");
+          swatch.className = "color-swatch";
+          const styleMap = { golden:"swatch-golden", toxictyranny:"swatch-toxic", rainbow:"swatch-rainbow", musicalscore:"swatch-musical", skullnbones:"swatch-skull" };
+          if (styleMap[color]) swatch.className += " " + styleMap[color];
+          else if (color === "black") swatch.style.backgroundColor = "#111";
+          else if (color === "white") { swatch.style.backgroundColor = "#f5f5f5"; swatch.style.border = "3px solid #ccc"; }
+          else swatch.style.backgroundColor = color;
+          const isOwned = gameState.ownedColors.includes(color);
+          if (!isOwned) {
+            swatch.classList.add("locked");
+            const price = document.createElement("div");
+            price.className = "color-price";
+            price.textContent = colorPrices[color] + " 💰";
+            wrapper.appendChild(price);
+          }
+          if (color === gameState.playerCarColor && isOwned) swatch.classList.add("selected");
+          const nameLabel = document.createElement("div");
+          nameLabel.style.cssText = "font-size:.58rem;color:#aaa;margin-top:3px;text-align:center;max-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+          nameLabel.textContent = colorDisplayNames[color];
+          swatch.onclick = () => {
+            if (isOwned) {
+              gameState.playerCarColor = color; saveLocal(); syncUserToServer(); updateColorPalette(); rebuildMenuCar();
+            } else if (gameState.totalCoins >= colorPrices[color]) {
+              gameState.totalCoins -= colorPrices[color];
+              gameState.ownedColors.push(color);
+              gameState.playerCarColor = color;
+              saveLocal(); syncUserToServer(); updateColorPalette(); rebuildMenuCar();
+            }
+          };
+          wrapper.appendChild(swatch);
+          wrapper.appendChild(nameLabel);
+          palette.appendChild(wrapper);
+        });
+        document.getElementById("coinBalance").textContent = gameState.totalCoins;
+      }
+
+      function buildWheelSwatch(wid) {
+        const data = wheelData[wid];
+        const isOwned = gameState.ownedWheels.includes(wid);
+        const cell = document.createElement("div");
+        cell.className = "wheel-cell";
+        const swatch = document.createElement("div");
+        swatch.className = "wheel-swatch" + (isOwned ? "" : " locked") + (wid === gameState.selectedWheel && isOwned ? " selected" : "");
+        const cvs = document.createElement("canvas");
+        cvs.width = 88; cvs.height = 88;
+        cvs.style.cssText = "width:100%;height:100%;display:block;border-radius:50%;";
+        const ctx = cvs.getContext("2d");
+        const cx = 44, cy = 44, R = 38;
+        const s = data.style;
+        if (s === "grooves") {
+          ctx.fillStyle="#111";ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fill();
+          ctx.strokeStyle="#444";ctx.lineWidth=5;
+          for(let a=0;a<360;a+=45){ctx.save();ctx.translate(cx,cy);ctx.rotate(a*Math.PI/180);ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(0,-R+4);ctx.stroke();ctx.restore();}
+          [12,22,34].forEach(r=>{ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();});
+        } else if (s === "skelly") {
+          ctx.fillStyle="#e0e0e0";ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fill();
+          ctx.font="bold 18px serif";ctx.fillStyle="rgba(80,80,80,.85)";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("💀",cx,cy);
+        } else if (s === "goldengrooves") {
+          const g=ctx.createRadialGradient(cx,cy,4,cx,cy,R);g.addColorStop(0,"#FFD700");g.addColorStop(0.45,"#FFA500");g.addColorStop(1,"#8B6914");
+          ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fill();
+        } else if (s === "rainbow") {
+          const rc=["#ff0000","#ff7700","#ffff00","#00ff00","#0099ff","#8b00ff","#ff1493","#00ffff"];
+          rc.forEach((c,i)=>{ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,R,(i/rc.length)*Math.PI*2,((i+1)/rc.length)*Math.PI*2);ctx.closePath();ctx.fill();});
+        } else if (s === "toxic") {
+          const g=ctx.createRadialGradient(cx,cy,4,cx,cy,R);g.addColorStop(0,"#39ff14");g.addColorStop(0.5,"#00cc00");g.addColorStop(1,"#003300");
+          ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fill();
+          ctx.fillStyle="rgba(0,255,0,.9)";ctx.font="bold 14px sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("☣",cx,cy);
+        } else if (s === "bw") {
+          for(let a=0;a<12;a++){ctx.fillStyle=a%2===0?"#111":"#eee";ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,R,(a/12)*Math.PI*2,((a+1)/12)*Math.PI*2);ctx.closePath();ctx.fill();}
+        } else if (s === "musical") {
+          const g=ctx.createRadialGradient(cx,cy,4,cx,cy,R);g.addColorStop(0,"#bb00ff");g.addColorStop(0.5,"#440088");g.addColorStop(1,"#110033");
+          ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fill();
+          ctx.fillStyle="rgba(220,170,255,.95)";ctx.font="bold 16px serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("♫",cx,cy);
+        } else if (s === "slick") {
+          const isR=wid==="redslicks";
+          const g=ctx.createRadialGradient(cx,cy,4,cx,cy,R);
+          g.addColorStop(0,isR?"#ff6666":"#66aaff");g.addColorStop(0.55,isR?"#ff0000":"#0055ff");g.addColorStop(1,isR?"#880000":"#001888");
+          ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fill();
+        } else if (s === "pirate") {
+          ctx.fillStyle="#0d0000";ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fill();
+          ctx.strokeStyle="#cc0000";ctx.lineWidth=3;
+          ctx.beginPath();ctx.moveTo(cx-R+6,cy-R+6);ctx.lineTo(cx+R-6,cy+R-6);ctx.stroke();
+          ctx.beginPath();ctx.moveTo(cx+R-6,cy-R+6);ctx.lineTo(cx-R+6,cy+R-6);ctx.stroke();
+          ctx.fillStyle="rgba(200,0,0,.95)";ctx.font="bold 18px serif";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("☠",cx,cy);
+        }
+        ctx.fillStyle="#222";ctx.beginPath();ctx.arc(cx,cy,8,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle="#888";ctx.beginPath();ctx.arc(cx,cy,4,0,Math.PI*2);ctx.fill();
+        ctx.globalCompositeOperation="destination-in";ctx.beginPath();ctx.arc(cx,cy,R+1,0,Math.PI*2);ctx.fill();
+        ctx.globalCompositeOperation="source-over";
+        swatch.appendChild(cvs);
+        if (!isOwned) { const lock=document.createElement("span");lock.className="wheel-lock";lock.textContent="🔒";swatch.appendChild(lock); }
+        swatch.onclick = () => {
+          if (isOwned) {
+            gameState.selectedWheel = wid; saveLocal(); syncUserToServer(); updateWheelPalette(); rebuildMenuCar();
+          } else if (gameState.totalCoins >= data.price) {
+            gameState.totalCoins -= data.price;
+            gameState.ownedWheels.push(wid);
+            gameState.selectedWheel = wid;
+            saveLocal(); syncUserToServer(); updateWheelPalette(); rebuildMenuCar();
+            document.getElementById("coinBalance").textContent = gameState.totalCoins;
+          }
+        };
+        cell.appendChild(swatch);
+        const nameEl = document.createElement("div");
+        nameEl.className = "wheel-name"; nameEl.textContent = data.name;
+        cell.appendChild(nameEl);
+        if (!isOwned) {
+          const priceEl = document.createElement("div");
+          priceEl.className = "wheel-price"; priceEl.textContent = data.price + " 💰";
+          cell.appendChild(priceEl);
+        }
+        return cell;
+      }
+
+      function updateWheelPalette() {
+        const palette = document.getElementById("wheelPalette");
+        palette.innerHTML = "";
+        Object.keys(wheelData).forEach(id => palette.appendChild(buildWheelSwatch(id)));
+        document.getElementById("coinBalance").textContent = gameState.totalCoins;
+      }
+
+      // ══════════════════════════════════════════════════════
+      //  INPUT
+      // ══════════════════════════════════════════════════════
+      document.addEventListener("keydown", (e) => {
+        if (gameState.scene === "playing" && !gameState.isPaused && gameState.playerCar) {
+          const maxLane = getLanePositions(gameState.isOnline).length - 1;
+          if (e.key === "ArrowLeft" && gameState.playerCar.lane > 0) gameState.playerCar.lane--;
+          if (e.key === "ArrowRight" && gameState.playerCar.lane < maxLane) gameState.playerCar.lane++;
+        }
+      });
+      document.getElementById("leftBtn").addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        if (gameState.scene === "playing" && !gameState.isPaused && gameState.playerCar && gameState.playerCar.lane > 0) gameState.playerCar.lane--;
+      }, { passive: false });
+      document.getElementById("rightBtn").addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        const maxLane = getLanePositions(gameState.isOnline).length - 1;
+        if (gameState.scene === "playing" && !gameState.isPaused && gameState.playerCar && gameState.playerCar.lane < maxLane) gameState.playerCar.lane++;
+      }, { passive: false });
+      let tx0 = 0;
+      document.getElementById("gameCanvas").addEventListener("touchstart", e => { tx0 = e.changedTouches[0].screenX; });
+      document.getElementById("gameCanvas").addEventListener("touchend", e => {
+        if (gameState.scene !== "playing" || gameState.isPaused || !gameState.playerCar) return;
+        const maxLane = getLanePositions(gameState.isOnline).length - 1;
+        const dx = e.changedTouches[0].screenX - tx0;
+        if (Math.abs(dx) > 50) {
+          if (dx > 0 && gameState.playerCar.lane < maxLane) gameState.playerCar.lane++;
+          else if (dx < 0 && gameState.playerCar.lane > 0) gameState.playerCar.lane--;
+        }
+      });
+
+      // ══════════════════════════════════════════════════════
+      //  UI EVENTS
+      // ══════════════════════════════════════════════════════
+      document.getElementById("playBtn").addEventListener("click", () => {
+        gameState.scene = "playing";
+        document.getElementById("mainMenu").style.display = "none";
+        startBackgroundMusic();
+        initGame(false);
+      });
+      document.getElementById("playOnlineBtn").addEventListener("click", () => {
+        if (!socket || !socket.connected) {
+          showToast("Server not connected. Using offline mode.");
+          gameState.scene = "playing";
+          document.getElementById("mainMenu").style.display = "none";
+          startBackgroundMusic();
+          initGame(false);
+          return;
+        }
+        document.getElementById("mainMenu").style.display = "none";
+        document.getElementById("waitingRoom").style.display = "flex";
+        document.getElementById("countdown").textContent = "";
+        document.getElementById("waitingPlayers").innerHTML = '<div style="color:#888;font-size:.9rem;padding:1rem;">Searching for players...</div>';
+        socket.emit("joinQueue", { uid: MY_UID });
+        startBackgroundMusic();
+      });
+      document.getElementById("cancelQueueBtn").addEventListener("click", () => {
+        document.getElementById("waitingRoom").style.display = "none";
+        document.getElementById("mainMenu").style.display = "flex";
+        if (socket) socket.emit("leaveQueue", { uid: MY_UID });
+      });
+      document.getElementById("customizeBtn").addEventListener("click", () => {
+        document.getElementById("mainMenu").style.display = "none";
+        document.getElementById("customizeMenu").style.display = "flex";
+        updateColorPalette(); updateWheelPalette();
+        if (!musicStarted) startBackgroundMusic();
+      });
+      document.getElementById("backBtn").addEventListener("click", () => {
+        gameState.scene = "menu";
+        document.getElementById("customizeMenu").style.display = "none";
+        document.getElementById("mainMenu").style.display = "flex";
+      });
+      document.getElementById("savePlayBtn").addEventListener("click", () => {
+        gameState.scene = "playing";
+        document.getElementById("customizeMenu").style.display = "none";
+        startBackgroundMusic();
+        initGame(false);
+      });
+      document.getElementById("playAgainBtn").addEventListener("click", () => {
+        gameState.scene = "playing";
+        document.getElementById("gameOverScreen").style.display = "none";
+        startBackgroundMusic();
+        initGame(gameState.isOnline);
+      });
+      document.getElementById("mainMenuBtn").addEventListener("click", () => {
+        gameState.scene = "menu";
+        document.getElementById("gameOverScreen").style.display = "none";
+        document.getElementById("gameUI").style.display = "none";
+        document.getElementById("finishDistance").style.display = "none";
+        document.getElementById("inGameLeaderboard").style.display = "none";
+        document.getElementById("mainMenu").style.display = "flex";
+        Object.values(gameState.otherPlayers).forEach(p => { if (p.mesh) scene.remove(p.mesh); });
+        gameState.otherPlayers = {};
+        inGameLBData = {};
+      });
+      document.getElementById("settingsBtn").addEventListener("click", () => {
+        gameState.isPaused = true;
+        document.getElementById("settingsMenu").style.display = "flex";
+      });
+      document.getElementById("resumeBtn").addEventListener("click", () => {
+        gameState.isPaused = false;
+        document.getElementById("settingsMenu").style.display = "none";
+      });
+      document.getElementById("menuFromSettingsBtn").addEventListener("click", () => {
+        gameState.scene = "menu";
+        gameState.isPaused = false;
+        document.getElementById("settingsMenu").style.display = "none";
+        document.getElementById("gameUI").style.display = "none";
+        document.getElementById("finishDistance").style.display = "none";
+        document.getElementById("inGameLeaderboard").style.display = "none";
+        document.getElementById("mainMenu").style.display = "flex";
+      });
+      document.getElementById("volumeSlider").addEventListener("input", (e) => {
+        gameState.volume = e.target.value / 100;
+        if (musicNodes && musicNodes.masterGain) musicNodes.masterGain.gain.value = gameState.volume;
+      });
+      document.getElementById("yourStatsBtn").addEventListener("click", showMyStats);
+      document.getElementById("friendsBtn").addEventListener("click", showFriendsModal);
+      document.getElementById("closeStatsModal").addEventListener("click", () => {
+        document.getElementById("statsModal").style.display = "none";
+      });
+      document.getElementById("closeFriendsModal").addEventListener("click", () => {
+        document.getElementById("friendsModal").style.display = "none";
+      });
+      document.getElementById("statsModal").addEventListener("click", (e) => {
+        if (e.target === document.getElementById("statsModal")) document.getElementById("statsModal").style.display = "none";
+      });
+      document.getElementById("friendsModal").addEventListener("click", (e) => {
+        if (e.target === document.getElementById("friendsModal")) document.getElementById("friendsModal").style.display = "none";
+      });
+
+      // ══════════════════════════════════════════════════════
+      //  ANIMATE LOOP
+      // ══════════════════════════════════════════════════════
+      function animate() {
+        requestAnimationFrame(animate);
+        updateGame();
+        renderer.render(scene, camera);
+      }
+      function onResize() {
+        camera.aspect = innerWidth / innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(innerWidth, innerHeight);
+      }
+
+      // ══════════════════════════════════════════════════════
+      //  BOOT — loading screen turant hategi, baaki kaam parallel hoga
+      // ══════════════════════════════════════════════════════
+      window.addEventListener("load", () => {
+        // Three.js aur render loop sabse pehle shuru karo
+        initThree();
+        animate();
+        initMenuCar();
+        updateUsernameDisplay();
+        document.getElementById("yourStatsBtn").style.display = "flex";
+        document.getElementById("friendsBtn").style.display = "flex";
+
+        // Loading screen 2s baad hatao — server call ka wait nahi
+        setTimeout(hideLoading, 2000);
+
+        // Server calls background mein chalein
+        initUser();
+        initSocket();
+        setInterval(() => updateFriendNotifications().catch(() => {}), 30000);
+      });
+    </script>
+  </body>
+</html>
